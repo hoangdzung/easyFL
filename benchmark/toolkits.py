@@ -178,12 +178,14 @@ class DefaultTaskGen(BasicTaskGen):
         elif self.dist_id == 1:
             """label_skew_quantity"""
             self.skewness = min(max(0, self.skewness),1.0)
+            # pair is (id, label)
             dpairs = [[did, self.train_data[did][-1]] for did in range(len(self.train_data))]
-            num = max(int((1-self.skewness)*self.num_classes), 1)
+            num = max(int((1-self.skewness)*self.num_classes), 1) # each client contains only 'num' labels
             K = self.num_classes
             local_datas = [[] for _ in range(self.num_clients)]
             if num == K:
                 for k in range(K):
+                    # get list of ids which has label k
                     idx_k = [p[0] for p in dpairs if p[1]==k]
                     np.random.shuffle(idx_k)
                     split = np.array_split(idx_k, self.num_clients)
@@ -193,21 +195,22 @@ class DefaultTaskGen(BasicTaskGen):
                 times = [0 for _ in range(self.num_classes)]
                 contain = []
                 for i in range(self.num_clients):
-                    current = [i % K]
-                    times[i % K] += 1
-                    j = 1
+                    current = [i % K] # set of label appear in client i
+                    times[i % K] += 1 # the total number of appearance of that label in all client
+                    j = 1 # the current size of the label set
                     while (j < num):
-                        ind = random.randint(0, K - 1)
-                        if (ind not in current):
-                            j = j + 1
-                            current.append(ind)
-                            times[ind] += 1
+                        ind = random.randint(0, K - 1) # get a random label
+                        if (ind not in current): # if label not in current label set of the client
+                            j = j + 1 
+                            current.append(ind) # add that label to the current label set
+                            times[ind] += 1 
                     contain.append(current)
                 for k in range(K):
                     idx_k = [p[0] for p in dpairs if p[1]==k]
                     np.random.shuffle(idx_k)
                     split = np.array_split(idx_k, times[k])
                     ids = 0
+                    # distribute subset of ids w.r.t the label to all clients having that label
                     for cid in range(self.num_clients):
                         if k in contain[cid]:
                             local_datas[cid].extend(split[ids].tolist())
@@ -238,12 +241,12 @@ class DefaultTaskGen(BasicTaskGen):
             """label_skew_shard"""
             dpairs = [[did, self.train_data[did][-1]] for did in range(len(self.train_data))]
             self.skewness = min(max(0, self.skewness), 1.0)
-            num_shards = max(int((1 - self.skewness) * self.num_classes * 2), 1)
-            client_datasize = int(len(self.train_data) / self.num_clients)
-            all_idxs = [i for i in range(len(self.train_data))]
-            z = zip([p[1] for p in dpairs], all_idxs)
-            z = sorted(z)
-            labels, all_idxs = zip(*z)
+            num_shards = max(int((1 - self.skewness) * self.num_classes * 2), 1) # number of shards in each client
+            client_datasize = int(len(self.train_data) / self.num_clients) # size of data in each client
+
+            # sorted by label
+            all_idxs, labels = zip(*sorted(dpairs, key=lambda x:x[1]))
+            # size of each shard
             shardsize = int(client_datasize / num_shards)
             idxs_shard = range(int(self.num_clients * num_shards))
             local_datas = [[] for i in range(self.num_clients)]

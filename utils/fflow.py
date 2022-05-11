@@ -79,14 +79,26 @@ def setup_seed(seed):
 def initialize(option):
     # init fedtask
     print("init fedtask...", end='')
-    # dynamical initializing the configuration with the benchmark
-    bmk_name = option['task'][:option['task'].find('cnum')-1].lower()
-    bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
-    bmk_core_path = '.'.join(['benchmark', bmk_name, 'core'])
+
+    # get the available device
     utils.fmodule.device = torch.device('cuda:{}'.format(option['server_gpu_id']) if torch.cuda.is_available() and option['server_gpu_id'] != -1 else 'cpu')
+
+    # dynamical initializing the configuration with the benchmark
+    # get benchmark dataset name
+    bmk_name = option['task'][:option['task'].find('cnum')-1].lower()
+
+    # get model of that benchmark
+    bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
+    utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
+
+    # get preprocess core of that benchmark 
+    bmk_core_path = '.'.join(['benchmark', bmk_name, 'core'])
+
+    # get helper object
     utils.fmodule.TaskCalculator = getattr(importlib.import_module(bmk_core_path), 'TaskCalculator')
     utils.fmodule.TaskCalculator.setOP(getattr(importlib.import_module('torch.optim'), option['optimizer']))
-    utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
+
+    # get task dataset
     task_reader = getattr(importlib.import_module(bmk_core_path), 'TaskReader')(taskpath=os.path.join('fedtask', option['task']))
     train_datas, valid_datas, test_data, client_names = task_reader.read_data()
     num_clients = len(client_names)
