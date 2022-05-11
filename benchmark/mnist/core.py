@@ -2,10 +2,11 @@ from torchvision import datasets, transforms
 from benchmark.toolkits import ClassifyCalculator, DefaultTaskGen, XYTaskReader
 
 class TaskGen(DefaultTaskGen):
-    def __init__(self, dist_id, num_clients = 1, skewness = 0.5):
+    def __init__(self, dist_id, num_clients = 1, num_groups=3, skewness = 0.5):
         super(TaskGen, self).__init__(benchmark='mnist',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
+                                      num_groups=num_groups,
                                       skewness=skewness,
                                       rawdata_path='./benchmark/mnist/data',
                                       )

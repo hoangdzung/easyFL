@@ -14,6 +14,8 @@ depends on partitions:
 imbalance:
     iid:            6 Vol: only the vol of local dataset varies.
     niid:           7 Vol: for generating synthetic data
+-----------------------------------------------------------------------------------
+                    8: each groups of client contain only subset of labels, and labels of groups are disjoint
 """
 import torch
 import ujson
@@ -100,7 +102,7 @@ class BasicTaskGen:
 
     def get_taskname(self):
         """Create task name and return it."""
-        taskname = '_'.join([self.benchmark, 'cnum' +  str(self.num_clients), 'dist' + str(self.dist_id), 'skew' + str(self.skewness).replace(" ", ""), 'seed'+str(self.seed)])
+        taskname = '_'.join([self.benchmark, 'cnum' +  str(self.num_clients), 'cgroup' +  str(self.num_groups), 'dist' + str(self.dist_id), 'skew' + str(self.skewness).replace(" ", ""), 'seed'+str(self.seed)])
         return taskname
 
     def get_client_names(self):
@@ -120,13 +122,14 @@ class BasicTaskGen:
         return os.path.exists(os.path.join(self.rootpath, taskname))
 
 class DefaultTaskGen(BasicTaskGen):
-    def __init__(self, benchmark, dist_id, skewness, rawdata_path, num_clients=1, minvol=10, seed=0):
+    def __init__(self, benchmark, dist_id, skewness, rawdata_path, num_clients=1, num_groups=3, minvol=10, seed=0):
         super(DefaultTaskGen, self).__init__(benchmark, dist_id, skewness, rawdata_path, seed)
         self.minvol=minvol
         self.num_classes = -1
         self.train_data = None
         self.test_data = None
         self.num_clients = num_clients
+        self.num_groups = num_groups
         self.cnames = self.get_client_names()
         self.taskname = self.get_taskname()
         self.taskpath = os.path.join(self.rootpath, self.taskname)
@@ -278,6 +281,30 @@ class DefaultTaskGen(BasicTaskGen):
                 minv = np.min(proportions * len(self.train_data))
             proportions = (np.cumsum(proportions) * len(d_idxs)).astype(int)[:-1]
             local_datas  = np.split(d_idxs, proportions)
+
+        elif self.dist_id == 8:
+            """label_skew_quantity"""
+            dpairs = [[did, self.train_data[did][-1]] for did in range(len(self.train_data))]
+
+            K = self.num_classes
+            labels = np.arange(K)
+            np.random.shuffle(labels)
+            # each split is a set of labels of a group
+            label_splits = np.array_split(labels, self.num_groups)
+            
+            client_ids = np.arange(self.num_clients)
+            np.random.shuffle(client_ids)
+            client_ids_splits = np.array_split(client_ids, self.num_groups)
+
+            local_datas = [[] for _ in range(self.num_clients)]
+            for labels, clients in zip(label_splits, client_ids_splits):
+                for k in labels:
+                    idx_k = [p[0] for p in dpairs if p[1]==k]
+                    np.random.shuffle(idx_k)
+                    id_splits = np.array_split(idx_k, len(clients))
+                    for client_id, data_id in zip(clients, id_splits):
+                        local_datas[client_id].extend(data_id.tolist())
+            
         return local_datas
 
     def local_holdout(self, local_datas, rate=0.8, shuffle=False):
