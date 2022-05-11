@@ -36,32 +36,38 @@ class Server(MPBasicServer):
         """
         state_dicts = [model.state_dict() for model in models]
         K = models[0].fc2.weight.data.shape[0]
+        device = next(models[0].parameters()).device
 
         masks = []
         for client in self.selected_clients:
-            mask = np.zeros((K,1))
+            mask = np.zeros(K)
             mask[self.clients[client].all_labels] = 1
-            masks.append(mask)
-
-        for i, (client, model) in enumerate(zip(self.selected_clients, models)):
-            labels_to_clients[tuple(sorted(self.clients[client].all_labels))].append(i)
+            masks.append(torch.tensor(mask).to(device))
 
         avg_state_dict = copy.deepcopy(state_dicts[0])
         for key in avg_state_dict.keys():
-            if not key.startswith('fc2'):
+            if key=='fc2.weight':
+                avg_state_dict[key] = avg_state_dict[key] * masks[0].reshape((-1,1))
+                mask = masks[0].reshape((-1,1))
+                for i in range(1, len(state_dicts)):
+                    avg_state_dict[key] += state_dicts[i][key]*masks[i].reshape((-1,1))
+                    mask += masks[i].reshape((-1,1))
+
+                avg_state_dict[key] = avg_state_dict[key]/(mask+10e-10)
+            elif key=='fc2.bias':
+                avg_state_dict[key] = avg_state_dict[key] * masks[0]
+                mask = masks[0]
+                for i in range(1, len(state_dicts)):
+                    avg_state_dict[key] += state_dicts[i][key]*masks[i]
+                    mask += masks[i]
+
+                avg_state_dict[key] = avg_state_dict[key]/(mask+10e-10)
+            else:
                 for i in range(1, len(state_dicts)):
                     avg_state_dict[key] += state_dicts[i][key]
                 avg_state_dict[key] = torch.div(avg_state_dict[key], len(state_dicts))
-            else:
-                avg_state_dict[key] = avg_state_dict[key] * masks[0]
-                mask = mask[0]
-                for i in range(1, len(state_dicts)):
-                    avg_state_dict[key] += avg_state_dict[i][key]*masks[i]
-                    mask += masks[i]
-
-                avg_state_dict[key] = avg_state_dict[key]/mask
-
         self.model.load_state_dict(avg_state_dict)
+
 
     def iterate(self, t, pool):
         """
