@@ -187,6 +187,10 @@ class BasicServer():
             selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=[nk / self.data_vol for nk in self.client_vols]))
         # drop the selected but inactive clients
         selected_clients = list(set(active_clients).intersection(selected_clients))
+        labels = []
+        for cli in self.selected_clients:
+            labels += self.clients[cli].train_data.all_labels
+        print(set(labels))
         return selected_clients
 
     def aggregate(self, models, p=[]):
