@@ -86,11 +86,16 @@ def initialize(option):
     # dynamical initializing the configuration with the benchmark
     # get benchmark dataset name
     bmk_name = option['task'][:option['task'].find('cnum')-1].lower()
-    if option['dist'] ==8:
-        assert bmk_name == 'mnist', 'only support mnist for dist 8'
-        if option['model'] != 'cnn':
-            print("Model is changed to cnn")
-            option['model'] = 'cnn'
+    assert 'dist' in bmk_name
+    for param in bmk_name.split('_'):
+        if 'dist' in param:
+            dist = int(param.replace('dist',''))
+            if dist ==8:
+                assert bmk_name == 'mnist', 'only support mnist for dist 8'
+                if option['model'] != 'cnn':
+                    print("Model is changed to cnn")
+                    option['model'] = 'cnn'
+            break
 
     # get model of that benchmark
     bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
