@@ -1,5 +1,6 @@
 from pathlib import Path
 from .mp_fedbase import MPBasicServer, MPBasicClient
+from .mp_fedkdr import KL_divergence
 import torch
 import numpy as np 
 import os
@@ -95,3 +96,38 @@ class Client(MPBasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.all_labels = self.train_data.all_labels if self.train_data else [] 
+        self.lossfunc = nn.CrossEntropyLoss()
+        self.kd_factor = 1
+                
+        
+    def train(self, model, device):
+        model = model.to(device)
+        model.train()
+        
+        src_model = copy.deepcopy(model).to(device)
+        src_model.freeze_grad()
+                
+        data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, droplast=True)
+        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        
+        for iter in range(self.epochs):
+            for batch_id, batch_data in enumerate(data_loader):
+                model.zero_grad()
+                loss, kl_loss = self.get_loss(model, src_model, batch_data, device)
+                loss = loss + kl_loss
+                loss.backward()
+                optimizer.step()
+        return
+    
+    
+    def data_to_device(self, data,device):
+        return data[0].to(device), data[1].to(device)
+
+
+    def get_loss(self, model, src_model, data, device):
+        tdata = self.data_to_device(data, device)    
+        output_s, representation_s = model.pred_and_rep(tdata[0])                  # Student
+        _ , representation_t = src_model.pred_and_rep(tdata[0])                    # Teacher
+        kl_loss = KL_divergence(representation_t, representation_s, device)        # KL divergence
+        loss = self.lossfunc(output_s, tdata[1])
+        return loss, kl_loss                
