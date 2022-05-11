@@ -86,8 +86,8 @@ def initialize(option):
     # dynamical initializing the configuration with the benchmark
     # get benchmark dataset name
     bmk_name = option['task'][:option['task'].find('cnum')-1].lower()
-    assert 'dist' in bmk_name
-    for param in bmk_name.split('_'):
+    assert 'dist' in option['task']
+    for param in option['task'].split('_'):
         if 'dist' in param:
             dist = int(param.replace('dist',''))
             if dist ==8:
