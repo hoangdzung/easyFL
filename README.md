@@ -1,6 +1,6 @@
 # easyFL: A Lightning Framework for Federated Learning
 
-This repository is PyTorch implementation for the IJCAI-21 paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/).
+This repository is PyTorch implementation for paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/) which is accepted by IJCAI-21 Conference.
 
 Our easyFL is a strong and reusable experimental platform for research on federated learning (FL) algorithm. It is easy for FL-researchers to quickly realize and compare popular centralized federated learning algorithms. 
 
@@ -11,9 +11,7 @@ Our easyFL is a strong and reusable experimental platform for research on federa
 - [Remark](#Remark)
 - [Citation](#Citation)
 - [Contacts](#Contacts)
-- [FedRME](#FedRME)
 - [References](#References)
-
 
 ## Requirements
 
@@ -36,18 +34,18 @@ ujson>=4.0.2
 
 ```sh
 # generate the splited dataset
-python generate_fedtask.py --benchmark mnist_classification --dist 0 --skew 0 --num_clients 100
+python generate_fedtask.py --dataset mnist --dist 0 --skew 0 --num_clients 100
 ```
+**dist is from 0 to 6 (except 4), skew from 0 to 7**
+
 
 **Second**, run the command below to quickly get a result of the basic algorithm FedAvg on MNIST with a simple CNN:
 
 ```sh
-python main.py --task mnist_classification_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.215 --proportion 0.1 --batch_size 10 --eval_interval 1
-# if using gpu, add the id of the gpu device as '--gpu id' to the end of the command like this
-# python main.py --task mnist_classification_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.215 --proportion 0.1 --batch_size 10 --eval_interval 1 --gpu 0
+python main.py --task mnist_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.215 --proportion 0.1 --batch_size 10 --eval_interval 1
 ```
 
-The result will be stored in ` ./fedtask/mnist_classification_cnum100_dist0_skew0_seed0/record/`.
+The result will be stored in ` ./fedtask/mnist_cnum100_dist0_skew0_seed0/record/`.
 
 **Third**, run the command below to get a visualization of the result.
 
@@ -57,12 +55,6 @@ cd ../utils
 # visualize the results
 python result_analysis.py
 ```
-<p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_trainloss.png" width="330" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testloss.png" width="330" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testacc.png" width="330" />
-</p>
-
 ### Performance
 
 <table>
@@ -156,47 +148,6 @@ python result_analysis.py
 
 For those who want to realize their own federaed algorithms or reproduce others, please see `algorithms/readme.md`, where we take two simple examples to show how to use easyFL for the popurse.
 
-### Dataset Partition Visualizing
-We also provide the visualization of dataset partitioned by labels. Here we take the partition of CIFAR100/MNIST/CIFAR10 as the examples. Across all the examples, each row in the figure corresponds to the local data of one client, and different colors represent different labels. The x axis is the number of samples in the local dataset.
-#### Di ~ D where dist=0
-Each local dataset is I.I.D. drawn from the global distribution. Here we allocate the data of CIFAR100 to 100 clients. The iid can also be gengerated by setting (dist=2, skew=0) or (dist=1, skew=0). We list the results of the three IID partition manners below (i.e. dist=0,1,2 from left to right).
-<p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist0_skew0_seed0.jpg" width="200" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist1_skew0.0_seed0.jpg" width="200" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist2_skew0.0_seed0.jpg" width="200" />
-</p>
-
-#### |{Di(Y)}|=K where dist=1
-Each local dataset is allocated K labels of data. The visualization of the partition is on MNIST. There are 10 clients in each picture.
-<p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.39_seed0.jpg" width="200" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.69_seed0.jpg" width="200" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.79_seed0.jpg" width="200" />
-</p>
-
-#### Di ~ Dirichlet(αP) where dist=2
-Here the partitioned dataset obeys the dirichlet(alpha * p) distirbution. The dataset is allocated to 100 clients and each client has a similar amount data size (i.e. balance). The hyperparameters `skewness` controls the non-i.i.d. degree of the federated dataset, which increases from the left (skewness=0.0 => alpha=inf) to the right (skewness=1.0 => alpha=0). 
-
-<p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.0_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.2_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.4_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.6_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.8_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="160" />
-</p>
-
-To generate these fedtasks, run the command below
-
-```
-# I.I.D.
-python generated_fedtask.py --dist 0 --skew 0 --num_client 100 --benchmark cifar100_classification
-# skew=0.39,0.69,0.79
-python generated_fedtask.py --dist 1 --skew 0.39 --num_client 10 --benchmark mnist_classification
-# varying skew from 0.0 to 1.0
-python generated_fedtask.py --dist 2 --skew 0.0 --num_client 100 --benchmark cifar10_classification
-```
-
 ### Options
 
 Basic options:
@@ -225,11 +176,9 @@ Client-side options:
 
 * `num_epochs` is the number of local training epochs.
 
-* `num_steps` is the number of local updating steps and the default value is -1. If this term is set to larger than 0, then `num_epochs` is invalid.
-
 * `learning_rate ` is the step size when locally training.
 
-* `batch_size ` is the size of one batch data during local training. `batch_size = full_batch` if `batch_size==-1` and `batch_size=|Di|*batch_size` if `1>batch_size>0`.
+* `batch_size ` is the size of one batch data during local training.
 
 * `optimizer` is to choose the optimizer. Options: `SGD`, `Adam`.
 
@@ -262,15 +211,16 @@ Each additional parameter can be defined in `./utils/fflow.read_option`
 We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and `utils`.
 ```
 ├─ benchmark
-│  ├─ mnist_classification			//classification on mnist dataset
+│  ├─ mnist							//mnist dataset
+│  │  ├─ data							//data
 │  │  ├─ model                   //the corresponding model
 │  |  └─ core.py                 //the core supporting for the dataset, and each contains three necessary classes(e.g. TaskGen, TaskReader, TaskCalculator)							
 │  ├─ ...
-│  ├─ RAW_DATA                   // storing the downloaded raw dataset
 │  └─ toolkits.py						//the basic tools for generating federated dataset
 ├─ fedtask
 │  ├─ mnist_client100_dist0_beta0_noise0//IID(beta=0) MNIST for 100 clients with not predefined noise
-│  │  ├─ record							//the directionary of the running result
+│  │  ├─ record							//record of result
+│  │  ├─ info.json						//basic infomation of the task
 │  |  └─ data.json						//the splitted federated dataset (fedtask)
 |  └─ ...
 ├─ method
@@ -282,11 +232,10 @@ We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and 
 ├─ utils
 │  ├─ fflow.py							//option to read, initialize,...
 │  ├─ fmodule.py						//model-level operators
-│  ├─ network_simulator.py						//simulating the network heterogeneity
 │  └─ result_analysis.py				        //to generate the visualization of record
 ├─ generate_fedtask.py					        //generate fedtask
 ├─ requirements.txt
-└─ main.py                       //run this file to start easyFL system
+└─ main.py
 ```
 ### Benchmark
 
@@ -297,7 +246,6 @@ We define each task as a combination of the federated dataset of a particular di
 
 ```python
 """
-# store the raw data
 {
     'store': 'XY'
     'client_names': ['user0', ..., 'user99']
@@ -310,28 +258,6 @@ We define each task as a combination of the federated dataset of a particular di
        'dvalid': {'x': [...], 'y': [...]},
      },
     'dtest': {'x':[...], 'y':[...]}
-}
-# store the index of data in the original dataset
-{
-    'store': 'IDX'
-    'datasrc':{
-        'class_path': 'torchvision.datasets',
-        'class_name': dataset_class_name,
-        'train_args': {
-             'root': "str(raw_data_path)",
-             ...
-        },
-        'test_args': {
-             'root': "str(raw_data_path)",
-             ...
-         }
-    }
-    'client_names': ['user0', ..., 'user99']
-    'user0': {
-       'dtrain': [...],
-       'dvalid': [...],
-     },...,
-    'dtest': [...]
 }
 """
 ```
@@ -360,10 +286,7 @@ Utils is composed of commonly used operations: model-level operation (we convert
 
 ## Remark
 
-* Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/), please use another branch `easyFL v1.0` of this project. 
-
-# FedRME
-* A realization of federated learning algorithm on Road Markings Extraction from Mobile LiDAR Point Clouds (FedRME, https://fanxlxmu.github.io/publication/paper/CSCWD22-FedRME.pdf) was accepted by 2022 IEEE 25th International Conference on Computer Supported Cooperative Work in Design (IEEE CSCWD 2022). The source code for FedRME will be release as soon as possible.
+Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/), please use another branch `easyFL v1.0` of this project.
 
 ## Citation
 

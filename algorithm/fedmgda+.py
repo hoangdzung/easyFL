@@ -16,7 +16,8 @@ class Server(BasicServer):
     def iterate(self, t):
         self.selected_clients = self.sample()
         # training
-        models = self.communicate(self.selected_clients)['model']
+        models, losses = self.communicate(self.selected_clients)
+        if self.selected_clients == []: return
         grads = [self.model-w for w in models]
         # clip grads
         for gi in grads: gi.normalize()

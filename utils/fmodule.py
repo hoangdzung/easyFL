@@ -4,7 +4,6 @@ from torch import nn
 device=None
 TaskCalculator=None
 Model = None
-Optim = None
 
 class FModule(nn.Module):
     def __init__(self):
@@ -109,23 +108,8 @@ def element_wise_func(m, func):
         _modeldict_cp(res.state_dict(), _modeldict_element_wise(m.state_dict(), func))
     return res
 
-def _model_to_tensor(m):
-    return torch.cat([mi.data.view(-1) for mi in m.parameters()])
-
-def _model_from_tensor(mt):
-    res = Model().to(device)
-    cnt = 0
-    end = 0
-    with torch.no_grad():
-        for i, p in enumerate(res.parameters()):
-            beg = 0 if cnt == 0 else end
-            end = end + p.view(-1).size()[0]
-            p.data = mt[beg:end].contiguous().view(p.data.size())
-            cnt += 1
-    return res
-
 def _model_sum(ms):
-    if len(ms)==0: return None
+    if not ms: return None
     op_with_graph = sum([mi.ingraph for mi in ms]) > 0
     res = Model().to(ms[0].get_device())
     if op_with_graph:
@@ -143,8 +127,8 @@ def _model_sum(ms):
     return res
 
 def _model_average(ms = [], p = []):
-    if len(ms)==0: return None
-    if len(p)==0: p = [1.0 / len(ms) for _ in range(len(ms))]
+    if not ms: return None
+    if not p: p = [1.0 / len(ms) for _ in range(len(ms))]
     op_with_graph = sum([w.ingraph for w in ms]) > 0
     res = Model().to(ms[0].get_device())
     if op_with_graph:
@@ -272,7 +256,7 @@ def _modeldict_cp(md1, md2):
     return
 
 def _modeldict_sum(mds):
-    if len(mds)==0: return None
+    if not mds: return None
     md_sum = {}
     for layer in mds[0].keys():
         md_sum[layer] = torch.zeros_like(mds[0][layer])
@@ -285,7 +269,7 @@ def _modeldict_sum(mds):
     return md_sum
 
 def _modeldict_weighted_average(mds, weights=[]):
-    if len(mds)==0:
+    if not mds:
         return None
     md_avg = {}
     for layer in mds[0].keys(): md_avg[layer] = torch.zeros_like(mds[0][layer])
@@ -372,7 +356,7 @@ def _modeldict_to_tensor1D(md):
 def _modeldict_dot(md1, md2):
     res = torch.tensor(0.).to(md1[list(md1)[0]].device)
     for layer in md1.keys():
-        if md1[layer] is None:
+        if md1[layer] is None or md1[layer].requires_grad==False:
             continue
         res += (md1[layer].view(-1).dot(md2[layer].view(-1)))
     return res
@@ -401,16 +385,16 @@ def _modeldict_element_wise(md, func):
 def _modeldict_num_parameters(md):
     res = 0
     for layer in md.keys():
-        if md[layer] is None: continue
+        if md[layer] is None or md[layer].requires_grad==False: continue
         s = 1
         for l in md[layer].shape:
             s *= l
         res += s
     return res
 
-def _modeldict_print(md):
+def _modeldict_print(md, only_requires_grad = False):
     for layer in md.keys():
-        if md[layer] is None:
+        if md[layer] is None or (only_requires_grad == False and md[layer].requires_grad==False):
             continue
         print("{}:{}".format(layer, md[layer]))
 

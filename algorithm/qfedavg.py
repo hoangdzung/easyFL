@@ -12,8 +12,8 @@ class Server(BasicServer):
         # sample clients
         self.selected_clients = self.sample()
         # training
-        res = self.communicate(self.selected_clients)
-        models, train_losses = res['model'], res['loss']
+        models, train_losses = self.communicate(self.selected_clients)
+        if self.selected_clients == []: return
         # plug in the weight updates into the gradient
         grads = [(self.model- model) / self.lr for model in models]
         Deltas = [gi*np.float_power(li + 1e-10, self.q) for gi,li in zip(grads,train_losses)]
@@ -33,16 +33,3 @@ class Server(BasicServer):
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
-
-    def reply(self, svr_pkg):
-        model = self.unpack(svr_pkg)
-        train_loss = self.test(model, 'train')['loss']
-        self.train(model)
-        cpkg = self.pack(model, train_loss)
-        return cpkg
-
-    def pack(self, model, loss):
-        return {
-            "model" : model,
-            "loss": loss,
-        }
