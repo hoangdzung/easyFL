@@ -95,7 +95,8 @@ def initialize(option):
                 if option['model'] != 'cnn':
                     print("Model is changed to cnn")
                     option['model'] = 'cnn'
-            break
+        if 'cgroup' in param:
+            option['num_groups'] = int(param.replace('cgroup',''))
 
     # get model of that benchmark
     bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
