@@ -2,11 +2,14 @@ from pathlib import Path
 from .mp_fedbase import MPBasicServer, MPBasicClient
 from .mp_fedkdr import KL_divergence
 import torch
+import torch.nn as nn
+
 import numpy as np 
 import os
 from collections import defaultdict
 from sklearn.cluster import KMeans
 from sklearn import metrics
+import copy 
 
 class Server(MPBasicServer):
     def __init__(self, option, model, clients, test_data = None):
