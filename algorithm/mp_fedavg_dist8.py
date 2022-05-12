@@ -32,7 +32,7 @@ class Server(MPBasicServer):
         print(metrics.homogeneity_score(y, y_pred), metrics.completeness_score(y, y_pred))
         return p.tolist()
 
-    def aggregate(self, models):
+    def aggregate_(self, models):
         """
         Returns the average of the weights.
         """
