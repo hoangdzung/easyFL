@@ -25,16 +25,17 @@ class Server(MPBasicServer):
         for i, (client, model) in enumerate(zip(self.selected_clients, models)):
             labels_to_clients[tuple(sorted(self.clients[client].all_labels))].append(i)
             X.append(model.fc1.weight.data.flatten().detach().cpu().numpy())
-        
+        p = np.zeros(len(X))
         y = np.zeros(len(X))
         for i, client_ids in enumerate(labels_to_clients.values()):
             y[client_ids] = i 
-
+            p[client_ids] = 1/len(client_ids)
         kmeans = KMeans(n_clusters=self.num_groups, random_state=self.seed).fit(X)   
         y_pred = kmeans.labels_
         print(metrics.homogeneity_score(y, y_pred), metrics.completeness_score(y, y_pred))
+        return p.tolist()
 
-    def aggregate(self, models):
+    def aggregate_(self, models):
         """
         Returns the average of the weights.
         """
@@ -89,9 +90,11 @@ class Server(MPBasicServer):
         # aggregate: pk = 1/K as default where K=len(selected_clients)
         device0 = torch.device(f"cuda:{self.server_gpu_id}")
         models = [i.to(device0) for i in models]
+        p = self.compare_model(models)
         # self.model = self.aggregate(models, p = [1.0 for cid in self.selected_clients])
-        self.aggregate(models)
-        self.compare_model(models)
+        self.model = self.aggregate(models, p = p)
+        # self.aggregate(models)
+        
         return
 
 
