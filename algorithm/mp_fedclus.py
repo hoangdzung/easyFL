@@ -94,17 +94,14 @@ class Client(MPBasicClient):
         encoded_inputs = None
         model = model.to(device)
         model.train()
-        
-        src_model = copy.deepcopy(model).to(device)
-        src_model.freeze_grad()
-                
+                        
         data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, droplast=True)
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         
         for iter in range(self.epochs):
             for batch_id, batch_data in enumerate(data_loader):
                 model.zero_grad()
-                loss, encoded_input = self.get_loss(model, src_model, batch_data, device)
+                loss, encoded_input = self.get_loss(model, batch_data, device)
                 if encoded_inputs is None:
                     encoded_inputs = encoded_input.mean(0)
                 else:
