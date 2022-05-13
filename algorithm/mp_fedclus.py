@@ -8,29 +8,34 @@ from collections import defaultdict
 from sklearn.cluster import KMeans
 from sklearn import metrics
 import copy 
+from scipy.spatial.distance import pdist, squareform
 
 class Server(MPBasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
+        self.num_groups = option['num_groups']
         self.seed = option['seed']
 
     def compare_model(self, encoded_inputs):
         n_selected_clients = len(self.selected_clients)
-        labels_to_clients = defaultdict(list)
+        # labels_to_clients = defaultdict(list)
 
-        X = []
-        for i, (client, encoded_input) in enumerate(zip(self.selected_clients, encoded_inputs)):
-            labels_to_clients[tuple(sorted(self.clients[client].all_labels))].append(i)
-            X.append(encoded_input)
-        p = np.zeros(len(X))
-        y = np.zeros(len(X))
-        for i, client_ids in enumerate(labels_to_clients.values()):
-            y[client_ids] = i 
-            p[client_ids] = 1/len(client_ids)
-        kmeans = KMeans(n_clusters=self.num_groups, random_state=self.seed).fit(X)   
-        y_pred = kmeans.labels_
-        print(metrics.homogeneity_score(y, y_pred), metrics.completeness_score(y, y_pred))
-        return p.tolist()
+        # X = []
+        # for i, (client, encoded_input) in enumerate(zip(self.selected_clients, encoded_inputs)):
+        #     labels_to_clients[tuple(sorted(self.clients[client].all_labels))].append(i)
+        #     X.append(encoded_input)
+        # p = np.zeros(len(X))
+        # y = np.zeros(len(X))
+        # for i, client_ids in enumerate(labels_to_clients.values()):
+        #     y[client_ids] = i 
+        #     p[client_ids] = 1/len(client_ids)
+        # kmeans = KMeans(n_clusters=self.num_groups, random_state=self.seed).fit(X)   
+        # y_pred = kmeans.labels_
+        # print(metrics.homogeneity_score(y, y_pred), metrics.completeness_score(y, y_pred))
+
+        dist = squareform(pdist(np.stack(encoded_inputs))).sum(0)
+
+        return dist.tolist()
 
     def unpack(self, packages_received_from_clients):
         """
@@ -43,7 +48,8 @@ class Server(MPBasicServer):
         """
         models = [cp["model"] for cp in packages_received_from_clients]
         train_losses = [cp["train_loss"] for cp in packages_received_from_clients]
-        return models, train_losses, encoded_input = [cp["encoded_inputs"] for cp in packages_received_from_clients]
+        encoded_input = [cp["encoded_input"] for cp in packages_received_from_clients]
+        return models, train_losses, encoded_input
 
     def iterate(self, t, pool):
         """
