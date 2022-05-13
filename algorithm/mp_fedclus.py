@@ -1,6 +1,7 @@
 from pathlib import Path
 from .mp_fedbase import MPBasicServer, MPBasicClient
 import torch
+import torch.nn as nn
 import numpy as np 
 import os
 from collections import defaultdict
@@ -72,6 +73,7 @@ class Client(MPBasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.all_labels = self.train_data.all_labels if self.train_data else [] 
+        self.lossfunc = nn.CrossEntropyLoss()
 
     def pack(self, model, loss, encoded_input):
         """
