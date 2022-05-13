@@ -21,7 +21,7 @@ class Server(MPBasicServer):
         X = []
         for i, (client, encoded_input) in enumerate(zip(self.selected_clients, encoded_inputs)):
             labels_to_clients[tuple(sorted(self.clients[client].all_labels))].append(i)
-            X.append(encoded_input.detach().cpu().numpy())
+            X.append(encoded_input)
         p = np.zeros(len(X))
         y = np.zeros(len(X))
         for i, client_ids in enumerate(labels_to_clients.values()):
@@ -43,7 +43,7 @@ class Server(MPBasicServer):
         """
         models = [cp["model"] for cp in packages_received_from_clients]
         train_losses = [cp["train_loss"] for cp in packages_received_from_clients]
-        return models, train_losses
+        return models, train_losses, encoded_input = [cp["encoded_inputs"] for cp in packages_received_from_clients]
 
     def iterate(self, t, pool):
         """
@@ -111,7 +111,7 @@ class Client(MPBasicClient):
                     
                 loss.backward()
                 optimizer.step()
-        return encoded_inputs
+        return encoded_inputs.detach().cpu().numpy()
     
     
     def data_to_device(self, data,device):
