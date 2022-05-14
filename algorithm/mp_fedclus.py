@@ -17,25 +17,16 @@ class Server(MPBasicServer):
         self.seed = option['seed']
 
     def compare_model(self, encoded_inputs):
-        n_selected_clients = len(self.selected_clients)
-        # labels_to_clients = defaultdict(list)
+        dist = pdist(np.stack(encoded_inputs),'cosine').reshape((-1,1))
+        kmeans = KMeans(n_clusters=2, random_state=self.seed).fit(dist)
+        if kmeans.cluster_centers_[0][0] < kmeans.cluster_centers_[1][0]:
+            threshold = max([dist[i][0] for i, label in enumerate(kmeans.labels_) if label ==0])
+        else:
+            threshold = max([dist[i][0] for i, label in enumerate(kmeans.labels_) if label ==1])
+        dist = squareform(dist.reshape((-1,)))
+        p = 1/(dist<=threshold).sum(0)
+        return p
 
-        # X = []
-        # for i, (client, encoded_input) in enumerate(zip(self.selected_clients, encoded_inputs)):
-        #     labels_to_clients[tuple(sorted(self.clients[client].all_labels))].append(i)
-        #     X.append(encoded_input)
-        # p = np.zeros(len(X))
-        # y = np.zeros(len(X))
-        # for i, client_ids in enumerate(labels_to_clients.values()):
-        #     y[client_ids] = i 
-        #     p[client_ids] = 1/len(client_ids)
-        # kmeans = KMeans(n_clusters=self.num_groups, random_state=self.seed).fit(X)   
-        # y_pred = kmeans.labels_
-        # print(metrics.homogeneity_score(y, y_pred), metrics.completeness_score(y, y_pred))
-
-        dist = squareform(pdist(np.stack(encoded_inputs))).sum(0)
-
-        return dist.tolist()
 
     def unpack(self, packages_received_from_clients):
         """
