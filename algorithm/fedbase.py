@@ -238,6 +238,8 @@ class BasicServer():
         """
         evals, losses = [], []
         for c in self.clients:
+            if hasattr(c, 'model_type') and c.model_type!=0:
+                continue
             eval_value, loss = c.test(self.model, dataflag)
             evals.append(eval_value)
             losses.append(loss)
