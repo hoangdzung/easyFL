@@ -93,8 +93,8 @@ class Server(MPBasicServer):
             for batch_id, batch_data in enumerate(data_loader):
                 for i in range(2):
                     bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device, i)
-                    loss[i] += bmean_loss * len(batch_data[1])
-                    eval_metric[i] += bmean_eval_metric * len(batch_data[1])
+                    losses[i] += bmean_loss * len(batch_data[1])
+                    eval_metrics[i] += bmean_eval_metric * len(batch_data[1])
             for i in range(2):
                 eval_metrics[i] /= len(self.test_data)
                 losses[i] /= len(self.test_data)
