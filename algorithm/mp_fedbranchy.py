@@ -148,14 +148,25 @@ class Client(MPBasicClient):
         model.eval()
         loss = 0
         eval_metric = 0
+        loss2 = 0
+        eval_metric2 = 0
         data_loader = self.calculator.get_data_loader(dataset, batch_size=64)
         for batch_id, batch_data in enumerate(data_loader):
-            bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data,device, self.model_type)
-            loss += bmean_loss * len(batch_data[1])
-            eval_metric += bmean_eval_metric * len(batch_data[1])
+            bmean_eval_metric1, bmean_loss1 = self.calculator.test(model, batch_data,device, 0)
+            bmean_eval_metric2, bmean_loss2 = self.calculator.test(model, batch_data,device, 1)
+
+            loss += bmean_loss1 * len(batch_data[1])
+            eval_metric += bmean_eval_metric1 * len(batch_data[1])
+
+            loss2 += bmean_loss2 * len(batch_data[1])
+            eval_metric2 += bmean_eval_metric2 * len(batch_data[1])
+
         eval_metric =1.0 * eval_metric / len(dataset)
-        loss = 1.0 * loss / len(dataset)
-        return eval_metric, loss
+        eval_metric2 =1.0 * eval_metric2 / len(dataset)
+        loss1 = 1.0 * loss1 / len(dataset)
+        loss2 = 1.0 * loss2 / len(dataset)
+        
+        return (eval_metric, eval_metric2), (loss1, loss2)
 
     def train(self, model, device):
         model = model.to(device)

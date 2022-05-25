@@ -42,11 +42,11 @@ class Model(FModule):
         if n ==0:
             return x 
             
-        not_exit = torch.special.entr(F.softmax(x,dim=1)).sum(1) > self.exit_threshold
+        # not_exit = torch.special.entr(F.softmax(x,dim=1)).sum(1) > self.exit_threshold
 
-        branch_x = x_base[not_exit]
-        branch_x = self.branch2(branch_x)
-        x[not_exit, :] =  branch_x
+        # branch_x = x_base[not_exit]
+        x = self.branch2(x)
+        # x[not_exit, :] =  branch_x
 
         return x
     
