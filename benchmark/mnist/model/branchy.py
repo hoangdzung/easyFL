@@ -38,8 +38,8 @@ class Model(FModule):
         
     def forward(self, x, n=0):
         x_base = self.base1(x)
-        x = self.branch1(x_base)
         if n ==0:
+            x = self.branch1(x_base)
             return x 
             
         # not_exit = torch.special.entr(F.softmax(x,dim=1)).sum(1) > self.exit_threshold
