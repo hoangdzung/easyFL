@@ -45,7 +45,7 @@ class Model(FModule):
         # not_exit = torch.special.entr(F.softmax(x,dim=1)).sum(1) > self.exit_threshold
 
         # branch_x = x_base[not_exit]
-        x = self.branch2(x)
+        x = self.branch2(x_base)
         # x[not_exit, :] =  branch_x
 
         return x
