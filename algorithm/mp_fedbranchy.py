@@ -123,7 +123,10 @@ class Server(MPBasicServer):
                     if model_types[i] == 0:
                         w_avg[key] += state_dicts[i][key]
                         n+=1
-                w_avg[key] = w_avg[key]/ n 
+                if n>0:
+                    w_avg[key] = w_avg[key]/ n 
+                else:
+                    w_avg[key] = state_dicts[0][key]
             elif key.startswith('branch2'):
                 n=0
                 if model_types[0] == 1:
@@ -134,7 +137,10 @@ class Server(MPBasicServer):
                     if model_types[i] == 1:
                         w_avg[key] += state_dicts[i][key]
                         n+=1
-                w_avg[key] = w_avg[key]/ n          
+                if n>0:
+                    w_avg[key] = w_avg[key]/ n 
+                else:
+                    w_avg[key] = state_dicts[0][key]       
 
         return w_avg
 
