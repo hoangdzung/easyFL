@@ -102,7 +102,7 @@ class Server(MPBasicServer):
         else: 
             return -1, -1
             
-    def average_weights(models, model_types):
+    def average_weights(self, models, model_types):
         """
         Returns the average of the weights.
         """
@@ -151,6 +151,33 @@ class Server(MPBasicServer):
         train_losses = [cp["train_loss"] for cp in packages_received_from_clients]
         model_types = [cp["model_type"] for cp in packages_received_from_clients]
         return models, train_losses, model_types
+
+    def sample(self):
+        """Sample the clients.
+        :param
+            replacement: sample with replacement or not
+        :return
+            a list of the ids of the selected clients
+        """
+        all_clients_type0 = [cid if self.clients[cid].model_type==0 for cid in range(self.num_clients)]
+        all_clients_type1 = [cid if self.clients[cid].model_type==1 for cid in range(self.num_clients)]
+
+        selected_clients = []
+        # collect all the active clients at this round and wait for at least one client is active and
+        active_clients_type0 = []
+        active_clients_type1 = []
+        while(len(active_clients_type0)<1):
+            active_clients_type0 = [cid for cid in range(self.num_clients) if self.clients[cid].is_active() and self.clients[cid].model_type ==0]
+        while(len(active_clients_type1)<1):
+            active_clients_type1 = [cid for cid in range(self.num_clients) if self.clients[cid].is_active() and self.clients[cid].model_type ==1]
+        # sample clients
+
+        selected_clients_type0 = list(np.random.choice(all_clients_type0, self.clients_per_round//2, replace=False))
+        selected_clients_type1 = list(np.random.choice(all_clients_type1, self.clients_per_round-self.clients_per_round//2, replace=False))
+
+        selected_clients = list(set(selected_clients_type0+selected_clients_type1).intersection(active_clients_type0+active_clients_type1))
+
+        return selected_clients
 
 class Client(MPBasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
