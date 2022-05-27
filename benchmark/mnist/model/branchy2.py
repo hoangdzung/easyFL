@@ -18,7 +18,7 @@ class Model(FModule):
         self.branch1 = nn.Sequential(
             nn.Conv2d(in_channels=5, out_channels=1, kernel_size=3, stride=1, padding=0),
             nn.Flatten(),
-            nn.Linear(36,10)
+            nn.Linear(25,10)
         )
                 
         self.branch2 = nn.Sequential(
@@ -48,12 +48,12 @@ class Model(FModule):
     
     def pred_and_rep(self, x, n):
         if n ==0:
-            x = self.base1(x)
+            x = self.base(x)
             e = self.flatten(x)
             o = self.branch1(x)
             return o, [e]
         else:
-            x = self.base1(x)
+            x = self.base(x)
             e = self.flatten(x)
             o = self.branch2(x)     
             return o, [e]
