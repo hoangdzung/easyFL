@@ -109,11 +109,7 @@ class Server(MPBasicServer):
         state_dicts = [model.state_dict() for model in models]
         w_avg = copy.deepcopy(state_dicts[0])
         for key in w_avg.keys():
-            if key.startswith('base'):
-                for i in range(1, len(state_dicts)):
-                    w_avg[key] += state_dicts[i][key]
-                w_avg[key] = w_avg[key]/ len(state_dicts)
-            elif key.startswith('branch1'):
+            if key.startswith('branch1'):
                 n=0
                 if model_types[0] == 0:
                     n+=1
@@ -124,7 +120,7 @@ class Server(MPBasicServer):
                         w_avg[key] += state_dicts[i][key]
                         n+=1
                 w_avg[key] = w_avg[key]/ n 
-            elif key.startswith('branch2'):
+            else:
                 n=0
                 if model_types[0] == 1:
                     n+=1
