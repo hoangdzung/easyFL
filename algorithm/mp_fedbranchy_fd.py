@@ -3,7 +3,7 @@ from pathlib import Path
 from .mp_fedbase import MPBasicServer, MPBasicClient
 import torch.nn as nn
 import numpy as np
-
+import torch.nn.functional as F
 import torch
 import os
 import copy
@@ -215,7 +215,7 @@ class Client(MPBasicClient):
     def get_loss(self, model, src_model, data, device):
         tdata = self.data_to_device(data, device)    
         output_s, _ = model.pred_and_rep(tdata[0], self.model_type)                  # Student
-        output_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
+        output_t , _ = src_model.pred_and_rep(tdata[0], 1)                    # Teacher
         if self.kd_factor >0:
             # kl_loss = sum(KL_divergence(representation_t, representation_s, device) for representation_t, representation_s in zip(representation_ts, representation_ss))        # KL divergence
             kl_loss = nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),

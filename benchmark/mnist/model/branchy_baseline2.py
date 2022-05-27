@@ -18,7 +18,7 @@ class Model(FModule):
         self.branch1 = nn.Sequential(
             nn.Conv2d(in_channels=5, out_channels=1, kernel_size=3, stride=1, padding=0),
             nn.Flatten(),
-            nn.Linear(25,10)
+            nn.Linear(36,10)
         )
         
     def forward(self, x):

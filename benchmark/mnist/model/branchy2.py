@@ -18,19 +18,17 @@ class Model(FModule):
         self.branch1 = nn.Sequential(
             nn.Conv2d(in_channels=5, out_channels=1, kernel_size=3, stride=1, padding=0),
             nn.Flatten(),
-            nn.Linear(25,10)
+            nn.Linear(36,10)
         )
                 
         self.branch2 = nn.Sequential(
-            nn.MaxPool2d(2, 2),            
-            nn.ReLU(),
             nn.Conv2d(in_channels=5, out_channels=10, kernel_size=5, stride=1, padding=3),
             nn.MaxPool2d(2, 2), 
             nn.ReLU(),
             nn.Conv2d(in_channels=10, out_channels=20, kernel_size=5, stride=1, padding=3),
             nn.MaxPool2d(2, 2), 
             nn.Flatten(),
-            nn.Linear(400,10),
+            nn.Linear(180,10),
         )
         self.exit_threshold = 0.3
         
