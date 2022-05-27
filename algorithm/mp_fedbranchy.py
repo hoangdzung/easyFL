@@ -165,8 +165,8 @@ class Server(MPBasicServer):
         :return
             a list of the ids of the selected clients
         """
-        all_clients_type0 = [cid if self.clients[cid].model_type==0 for cid in range(self.num_clients)]
-        all_clients_type1 = [cid if self.clients[cid].model_type==1 for cid in range(self.num_clients)]
+        all_clients_type0 = [cid for cid in range(self.num_clients) if self.clients[cid].model_type==0]
+        all_clients_type1 = [cid for cid in range(self.num_clients) if self.clients[cid].model_type==1])]
 
         selected_clients = []
         # collect all the active clients at this round and wait for at least one client is active and
