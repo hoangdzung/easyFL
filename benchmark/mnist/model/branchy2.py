@@ -6,57 +6,54 @@ from utils.fmodule import FModule
 class Model(FModule):
     def __init__(self):
         super().__init__()
-        self.base = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=5, kernel_size=5, stride=1, padding=3),
-            nn.MaxPool2d(2, 2),
-            nn.ReLU(), 
-            nn.Conv2d(in_channels=5, out_channels=5, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2,2),
-        ) 
-        self.flatten = nn.Flatten()
-        self.branch1 = nn.Sequential(
-            nn.Conv2d(in_channels=5, out_channels=1, kernel_size=3, stride=1, padding=0),
-            nn.Flatten(),
-            nn.Linear(25,10)
+        self.base_layer0 = nn.Sequential(
+            nn.Conv2d(1, 5, kernel_size=5, stride=1, padding=3),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(5),
+            nn.ReLU()
         )
-                
-        self.branch2 = nn.Sequential(
-            nn.Conv2d(in_channels=5, out_channels=10, kernel_size=5, stride=1, padding=3),
-            nn.MaxPool2d(2, 2), 
-            nn.ReLU(),
-            nn.Conv2d(in_channels=10, out_channels=20, kernel_size=5, stride=1, padding=3),
-            nn.MaxPool2d(2, 2), 
-            nn.Flatten(),
-            nn.Linear(180,10),
+
+        self.base_layer11 = nn.Sequential(
+            nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1),
+            nn.ReLU()
         )
-        self.exit_threshold = 0.3
-        
+        self.branch2_layer12 = nn.Sequential(
+            nn.Conv2d(10, 10, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(10),
+            nn.ReLU(),
+            nn.Dropout(0.5)
+        )
+
+        self.base_layer21 = nn.Sequential(
+            nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1),
+            nn.ReLU()
+        )
+        self.branch2_layer22 = nn.Sequential(
+            nn.Conv2d(20, 20, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(20),
+            nn.ReLU(),
+            nn.Dropout(0.5)
+        )
+
+        self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
+        self.base_flatten = nn.Flatten()
+        self.base_fc = torch.nn.Linear(20, 10)
+
     def forward(self, x, n=0):
-        x_base = self.base(x)
-        if n ==0:
-            x = self.branch1(x_base)
-            return x 
-            
-        # not_exit = torch.special.entr(F.softmax(x,dim=1)).sum(1) > self.exit_threshold
-
-        # branch_x = x_base[not_exit]
-        x = self.branch2(x_base)
-        # x[not_exit, :] =  branch_x
-
-        return x
+        x = self.base_layer0(x)
+        x = self.base_layer11(x)
     
-    def pred_and_rep(self, x, n):
-        if n ==0:
-            x = self.base(x)
-            e = self.flatten(x)
-            o = self.branch1(x)
-            return o, [e]
-        else:
-            x = self.base(x)
-            e = self.flatten(x)
-            o = self.branch2(x)     
-            return o, [e]
+        if n!=0:
+            x = x + self.branch2_layer12(x)
+        x = self.base_layer21(x)
+    
+        if n!= 0:
+            x = x+ self.branch2_layer22(x)
+    
+        x = self.base_gap(x)
+        x = self.base_flatten(x)
+        x = self.base_fc(x)
+        return x
 
 class Loss(nn.Module):
     def __init__(self):
