@@ -109,7 +109,7 @@ class Server(MPBasicServer):
         state_dicts = [model.state_dict() for model in models]
         w_avg = copy.deepcopy(state_dicts[0])
         for key in w_avg.keys():
-            if key.startswith('branch1'):
+            if key.startswith('branch1') or key.startswith('fc1'):
                 n=0
                 if model_types[0] == 0:
                     n+=1
