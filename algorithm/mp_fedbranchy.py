@@ -2,6 +2,7 @@ from cmath import isnan
 from pathlib import Path
 from .mp_fedbase import MPBasicServer, MPBasicClient
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 
 import torch
@@ -25,21 +26,14 @@ def KL_divergence(teacher_batch_input, student_batch_input, device):
     
     assert batch_teacher == batch_student, "Unmatched batch size"
     
-    teacher_batch_input = teacher_batch_input.to(device).unsqueeze(1)
-    student_batch_input = student_batch_input.to(device).unsqueeze(1)
-    
-    sub_s = student_batch_input - student_batch_input.transpose(0,1)
-    sub_s_norm = torch.norm(sub_s, dim=2)
-    sub_s_norm = sub_s_norm[sub_s_norm!=0].view(batch_student,-1)
+    sub_s_norm = F.pdist(batch_student)
     std_s = torch.std(sub_s_norm)
     mean_s = torch.mean(sub_s_norm)
     kernel_mtx_s = torch.pow(sub_s_norm - mean_s, 2) / (torch.pow(std_s, 2) + 0.001)
     kernel_mtx_s = torch.exp(-1/2 * kernel_mtx_s)
     kernel_mtx_s = kernel_mtx_s/torch.sum(kernel_mtx_s, dim=1, keepdim=True)
     
-    sub_t = teacher_batch_input - teacher_batch_input.transpose(0,1)
-    sub_t_norm = torch.norm(sub_t, dim=2)
-    sub_t_norm = sub_t_norm[sub_t_norm!=0].view(batch_teacher,-1)
+    sub_s_norm = F.pdist(batch_teacher)
     std_t = torch.std(sub_t_norm)
     mean_t = torch.mean(sub_t_norm)
     kernel_mtx_t = torch.pow(sub_t_norm - mean_t, 2) / (torch.pow(std_t, 2) + 0.001)
