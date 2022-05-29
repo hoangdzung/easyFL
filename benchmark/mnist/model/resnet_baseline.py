@@ -14,13 +14,13 @@ class Model(FModule):
         )
 
         self.layer1 = nn.Sequential(
-            nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1).
-            nn.ReLu()
+            nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1),
+            nn.ReLU()
         )
 
         self.layer2 = nn.Sequential(
-            nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1).
-            nn.ReLu()
+            nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1),
+            nn.ReLU()
         )
 
         self.gap = torch.nn.AdaptiveAvgPool2d(1)

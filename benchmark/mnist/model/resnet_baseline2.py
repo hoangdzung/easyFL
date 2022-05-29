@@ -35,27 +35,21 @@ class Model(FModule):
         )
 
         self.layer11 = nn.Sequential(
-            nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1).
-            nn.ReLu()
+            nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1),
+            nn.ReLU()
         )
         self.layer12 = nn.Sequential(
-            nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1).
-            nn.BatchNorm2d(10),
-            nn.ReLU(),
-            nn.Conv2d(10, 10, kernel_size=3, stride=2, padding=1).
+            nn.Conv2d(10, 10, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(10),
             nn.ReLU(),
         )
 
         self.layer21 = nn.Sequential(
-            nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1).
-            nn.ReLu()
+            nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1),
+            nn.ReLU()
         )
         self.layer22 = nn.Sequential(
-            nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1).
-            nn.BatchNorm2d(20),
-            nn.ReLU(),
-            nn.Conv2d(20, 20, kernel_size=3, stride=2, padding=1).
+            nn.Conv2d(20, 20, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(20),
             nn.ReLU(),
         )
@@ -66,8 +60,10 @@ class Model(FModule):
 
     def forward(self, x):
         x = self.layer0(x)
-        x = self.layer11(x) + self.layer12
-        x = self.layer21(x) + self.layer22
+        x = self.layer11(x)
+        x = x + self.layer12(x)
+        x = self.layer21(x)
+        x = x+ self.layer22(x)
         x = self.gap(x)
         x = self.flatten(x)
         x = self.fc(x)
