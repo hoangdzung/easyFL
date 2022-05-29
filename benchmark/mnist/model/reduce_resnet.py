@@ -16,15 +16,15 @@ class ResBlock(nn.Module):
             self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
             self.shortcut = nn.Sequential()
 
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        # self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(out_channels)
-        self.bn2 = nn.BatchNorm2d(out_channels)
+        # self.bn2 = nn.BatchNorm2d(out_channels)
 
     def forward(self, input):
-        shortcut = self.shortcut(input)
+        # shortcut = self.shortcut(input)
         input = nn.ReLU()(self.bn1(self.conv1(input)))
-        input = nn.ReLU()(self.bn2(self.conv2(input)))
-        input = input + shortcut
+        # input = nn.ReLU()(self.bn2(self.conv2(input)))
+        # input = input + shortcut
         return nn.ReLU()(input)
 
 class Model(FModule):
@@ -45,20 +45,20 @@ class Model(FModule):
             resblock(10, 20, downsample=True),
         )
 
-        self.layer3 = nn.Sequential(
-            resblock(20, 64, downsample=True),
-        )
+        # self.layer3 = nn.Sequential(
+        #     resblock(20, 64, downsample=True),
+        # )
 
         self.gap = torch.nn.AdaptiveAvgPool2d(1)
-        self.fc = torch.nn.Linear(128, outputs)
+        self.flatten = nn.Flatten()
+        self.fc = torch.nn.Linear(20, outputs)
 
     def forward(self, x):
         x = self.layer0(x)
         x = self.layer1(x)
         x = self.layer2(x)
-        x = self.layer3(x)
         x = self.gap(x)
-        x = torch.flatten(x)
+        x = self.flatten(x)
         x = self.fc(x)
 
         return x
