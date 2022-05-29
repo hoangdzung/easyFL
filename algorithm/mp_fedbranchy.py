@@ -113,7 +113,7 @@ class Server(MPBasicServer):
                 for i in range(1, len(state_dicts)):
                     w_avg[key] += state_dicts[i][key]
                 w_avg[key] = w_avg[key]/ len(state_dicts)
-            elif key.startswith('branch1'):
+            elif key.startswith('branch1') or key.startswith('fc1'):
                 n=0
                 if model_types[0] == 0:
                     n+=1
@@ -127,7 +127,7 @@ class Server(MPBasicServer):
                     w_avg[key] = w_avg[key]/ n 
                 else:
                     w_avg[key] = state_dicts[0][key]
-            elif key.startswith('branch2'):
+            elif key.startswith('branch2') or key.startswith('fc2'):
                 n=0
                 if model_types[0] == 1:
                     n+=1
@@ -247,7 +247,7 @@ class Client(MPBasicClient):
     def get_loss(self, model, src_model, data, device):
         tdata = self.data_to_device(data, device)    
         output_s, representation_ss = model.pred_and_rep(tdata[0], self.model_type)                  # Student
-        _ , representation_ts = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
+        _ , representation_ts = src_model.pred_and_rep(tdata[0], 1)                    # Teacher
         if self.kd_factor >0:
             kl_loss = sum(KL_divergence(representation_t, representation_s, device) for representation_t, representation_s in zip(representation_ts, representation_ss))        # KL divergence
         else:

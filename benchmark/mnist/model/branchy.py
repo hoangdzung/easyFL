@@ -6,7 +6,7 @@ from utils.fmodule import FModule
 class Model(FModule):
     def __init__(self):
         super().__init__()
-        self.base1 = nn.Sequential(
+        self.base = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=5, kernel_size=5, stride=1, padding=3)
         ) 
         self.flatten = nn.Flatten()
@@ -17,9 +17,9 @@ class Model(FModule):
             nn.ReLU(),
             nn.MaxPool2d(2,2),
             nn.Flatten(),
-            nn.Linear(20,10)
         )
-                
+        self.fc1 = nn.Linear(20,10)
+            
         self.branch2 = nn.Sequential(
             nn.MaxPool2d(2, 2),            
             nn.ReLU(),
@@ -31,35 +31,39 @@ class Model(FModule):
             nn.ReLU(),
             nn.Flatten(),
             nn.Linear(500,84),
+        )
+        self.fc2 = nn.Sequential(
             nn.ReLU(),
             nn.Linear(84,10)
         )
         self.exit_threshold = 0.3
         
     def forward(self, x, n=0):
-        x_base = self.base1(x)
+        x_base = self.base(x)
         if n ==0:
             x = self.branch1(x_base)
+            x = self.fc1(x)
             return x 
             
         # not_exit = torch.special.entr(F.softmax(x,dim=1)).sum(1) > self.exit_threshold
 
         # branch_x = x_base[not_exit]
         x = self.branch2(x_base)
+        x = self.fc2(x)
         # x[not_exit, :] =  branch_x
 
         return x
     
     def pred_and_rep(self, x, n):
         if n ==0:
-            x = self.base1(x)
-            e = self.flatten(x)
-            o = self.branch1(x)
+            x = self.base(x)
+            e = self.branch1(x)
+            o = self.fc1(e)
             return o, [e]
         else:
-            x = self.base1(x)
-            e = self.flatten(x)
-            o = self.branch2(x)     
+            x = self.base(x)
+            e = self.branch2(x)
+            o = self.fc2(e) 
             return o, [e]
 
 class Loss(nn.Module):
