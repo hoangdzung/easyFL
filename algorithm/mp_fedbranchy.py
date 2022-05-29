@@ -26,14 +26,14 @@ def KL_divergence(teacher_batch_input, student_batch_input, device):
     
     assert batch_teacher == batch_student, "Unmatched batch size"
     
-    sub_s_norm = F.pdist(batch_student)
+    sub_s_norm = torch.cdist(student_batch_input,student_batch_input).flatten()[1:].view(batch_student-1, batch_student+1)[:,:-1].reshape(batch_student, batch_student-1)
     std_s = torch.std(sub_s_norm)
     mean_s = torch.mean(sub_s_norm)
     kernel_mtx_s = torch.pow(sub_s_norm - mean_s, 2) / (torch.pow(std_s, 2) + 0.001)
     kernel_mtx_s = torch.exp(-1/2 * kernel_mtx_s)
     kernel_mtx_s = kernel_mtx_s/torch.sum(kernel_mtx_s, dim=1, keepdim=True)
     
-    sub_s_norm = F.pdist(batch_teacher)
+    sub_t_norm = torch.cdist(teacher_batch_input,teacher_batch_input).flatten()[1:].view(batch_teacher-1, batch_teacher+1)[:,:-1].reshape(batch_teacher, batch_teacher-1)
     std_t = torch.std(sub_t_norm)
     mean_t = torch.mean(sub_t_norm)
     kernel_mtx_t = torch.pow(sub_t_norm - mean_t, 2) / (torch.pow(std_t, 2) + 0.001)
