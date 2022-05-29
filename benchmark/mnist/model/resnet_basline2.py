@@ -16,15 +16,12 @@ class ResBlock(nn.Module):
             self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
             self.shortcut = nn.Sequential()
 
-        # self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(out_channels)
-        # self.bn2 = nn.BatchNorm2d(out_channels)
 
     def forward(self, input):
-        # shortcut = self.shortcut(input)
+        shortcut = self.shortcut(input)
         input = nn.ReLU()(self.bn1(self.conv1(input)))
-        # input = nn.ReLU()(self.bn2(self.conv2(input)))
-        # input = input + shortcut
+        input = input + shortcut
         return nn.ReLU()(input)
 
 class Model(FModule):
@@ -37,17 +34,31 @@ class Model(FModule):
             nn.ReLU()
         )
 
-        self.layer1 = nn.Sequential(
-            resblock(5, 10, downsample=True),
+        self.layer11 = nn.Sequential(
+            nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1).
+            nn.ReLu()
+        )
+        self.layer12 = nn.Sequential(
+            nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1).
+            nn.BatchNorm2d(10),
+            nn.ReLU(),
+            nn.Conv2d(10, 10, kernel_size=3, stride=2, padding=1).
+            nn.BatchNorm2d(10),
+            nn.ReLU(),
         )
 
-        self.layer2 = nn.Sequential(
-            resblock(10, 20, downsample=True),
+        self.layer21 = nn.Sequential(
+            nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1).
+            nn.ReLu()
         )
-
-        # self.layer3 = nn.Sequential(
-        #     resblock(20, 64, downsample=True),
-        # )
+        self.layer22 = nn.Sequential(
+            nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1).
+            nn.BatchNorm2d(20),
+            nn.ReLU(),
+            nn.Conv2d(20, 20, kernel_size=3, stride=2, padding=1).
+            nn.BatchNorm2d(20),
+            nn.ReLU(),
+        )
 
         self.gap = torch.nn.AdaptiveAvgPool2d(1)
         self.flatten = nn.Flatten()
@@ -55,8 +66,8 @@ class Model(FModule):
 
     def forward(self, x):
         x = self.layer0(x)
-        x = self.layer1(x)
-        x = self.layer2(x)
+        x = self.layer11(x) + self.layer12
+        x = self.layer21(x) + self.layer22
         x = self.gap(x)
         x = self.flatten(x)
         x = self.fc(x)
