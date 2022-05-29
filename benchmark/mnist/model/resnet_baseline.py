@@ -4,10 +4,10 @@ import torch.nn.functional as F
 from utils.fmodule import FModule
 
 class Model(FModule):
-    def __init__(self, in_channels, resblock, outputs=1000):
+    def __init__(self):
         super().__init__()
         self.layer0 = nn.Sequential(
-            nn.Conv2d(in_channels, 5, kernel_size=5, stride=1, padding=3),
+            nn.Conv2d(1, 5, kernel_size=5, stride=1, padding=3),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(5),
             nn.ReLU()
@@ -25,7 +25,7 @@ class Model(FModule):
 
         self.gap = torch.nn.AdaptiveAvgPool2d(1)
         self.flatten = nn.Flatten()
-        self.fc = torch.nn.Linear(20, outputs)
+        self.fc = torch.nn.Linear(20, 10)
 
     def forward(self, x):
         x = self.layer0(x)
