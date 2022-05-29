@@ -55,6 +55,22 @@ class Model(FModule):
         x = self.base_fc(x)
         return x
 
+    def pred_and_rep(self, x, n):
+        x = self.base_layer0(x)
+        x = self.base_layer11(x)
+    
+        if n!=0:
+            x = x + self.branch2_layer12(x)
+        x = self.base_layer21(x)
+    
+        if n!= 0:
+            x = x+ self.branch2_layer22(x)
+    
+        x = self.base_gap(x)
+        e = self.base_flatten(x)
+        o = self.base_fc(x)
+        return o, [e]
+
 class Loss(nn.Module):
     def __init__(self):
         super(Loss, self).__init__()
