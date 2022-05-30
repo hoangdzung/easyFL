@@ -109,7 +109,11 @@ class Server(MPBasicServer):
         state_dicts = [model.state_dict() for model in models]
         w_avg = copy.deepcopy(state_dicts[0])
         for key in w_avg.keys():
-            if key.startswith('branch1') or key.startswith('fc1'):
+            if key.startswith('base'):
+                for i in range(1, len(state_dicts)):
+                    w_avg[key] += state_dicts[i][key]
+                w_avg[key] = w_avg[key]/ len(state_dicts)
+            elif key.startswith('branch1') or key.startswith('fc1'):
                 n=0
                 if model_types[0] == 0:
                     n+=1
@@ -119,8 +123,11 @@ class Server(MPBasicServer):
                     if model_types[i] == 0:
                         w_avg[key] += state_dicts[i][key]
                         n+=1
-                w_avg[key] = w_avg[key]/ n 
-            else:
+                if n>0:
+                    w_avg[key] = w_avg[key]/ n 
+                else:
+                    w_avg[key] = state_dicts[0][key]
+            elif key.startswith('branch2') or key.startswith('fc2'):
                 n=0
                 if model_types[0] == 1:
                     n+=1
@@ -130,7 +137,11 @@ class Server(MPBasicServer):
                     if model_types[i] == 1:
                         w_avg[key] += state_dicts[i][key]
                         n+=1
-                w_avg[key] = w_avg[key]/ n          
+                if n>0:
+                    w_avg[key] = w_avg[key]/ n 
+                else:
+                    w_avg[key] = state_dicts[0][key]       
+ 
 
         return w_avg
 
@@ -213,15 +224,22 @@ class Client(MPBasicClient):
 
     def get_loss(self, model, src_model, data, device):
         tdata = self.data_to_device(data, device)    
-        output_s, _ = model.pred_and_rep(tdata[0], self.model_type)                  # Student
-        output_t , _ = src_model.pred_and_rep(tdata[0], 1)                    # Teacher
+        outputs_s, _ = model.pred_and_rep(tdata[0], self.model_type)                  # Student
+        # outputs_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
+
+        kl_loss = 0
         if self.kd_factor >0:
             # kl_loss = sum(KL_divergence(representation_t, representation_s, device) for representation_t, representation_s in zip(representation_ts, representation_ss))        # KL divergence
-            kl_loss = nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
-                            F.softmax(output_t/self.T, dim=1))    # KL divergence
-        else:
-            kl_loss = 0
-        loss = self.lossfunc(output_s, tdata[1])
+            for i, output_s in enumerate(outputs_s):
+                # kl_loss += nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
+                #                 F.softmax(outputs_t[-1]/self.T, dim=1))    # KL divergence
+                if i!=len(outputs_s)-1:
+                    kl_loss += nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
+                                    F.softmax(outputs_s[-1]/self.T, dim=1))    # KL divergence
+        
+        loss = 0
+        for output_s in outputs_s:
+            loss += self.lossfunc(output_s, tdata[1])
         return loss, kl_loss
 
     def pack(self, model, loss):

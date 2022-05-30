@@ -70,7 +70,7 @@ class Model(FModule):
         x = self.base_bn2(x)
         x = self.base_gap(x)
         e = self.base_flatten(x)
-        o = self.base_fc(x)
+        o = self.base_fc(e)
         return o, [e]
 
 class Loss(nn.Module):

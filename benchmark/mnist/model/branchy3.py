@@ -25,7 +25,7 @@ class Model(FModule):
 
         self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
         self.base_flatten = nn.Flatten()
-        self.branch1_fc = torch.nn.Linear(20, 10)
+        self.base_fc = torch.nn.Linear(20, 10)
 
         self.branch2_layer3 = nn.Sequential(
             nn.Conv2d(20, 40, kernel_size=3, stride=1, padding=1),
@@ -42,7 +42,7 @@ class Model(FModule):
         if n==0:
             x = self.base_gap(x)
             x = self.base_flatten(x)
-            x = self.branch1_fc(x) 
+            x = self.base_fc(x) 
         else:
             x = self.branch2_layer3(x)
             x = self.base_gap(x)
@@ -58,13 +58,17 @@ class Model(FModule):
         if n==0:
             x = self.base_gap(x)
             e = self.base_flatten(x)
-            o = self.branch1_fc(e) 
+            o = self.base_fc(e) 
+            return [o], [e]
         else:
-            x = self.branch2_layer3(x)
-            x = self.base_gap(x)
-            e = self.base_flatten(x)
-            o = self.branch2_fc(e)
-        return o, [e]
+            x1 = self.base_gap(x)
+            e1 = self.base_flatten(x1)
+            o1 = self.base_fc(e1) 
+            x2 = self.branch2_layer3(x)
+            x2 = self.base_gap(x2)
+            e2 = self.base_flatten(x2)
+            o2 = self.branch2_fc(e2)
+        return [o1, o2], [e1, e2]
         
 
 class Loss(nn.Module):
