@@ -224,16 +224,22 @@ class Client(MPBasicClient):
 
     def get_loss(self, model, src_model, data, device):
         tdata = self.data_to_device(data, device)    
-        output_s, _ = model.pred_and_rep(tdata[0], self.model_type)                  # Student
-        output_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
+        outputs_s, _ = model.pred_and_rep(tdata[0], self.model_type)                  # Student
+        # outputs_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
 
+        kl_loss = 0
         if self.kd_factor >0:
-            kl_loss += nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
-                                F.softmax(output_t/self.T, dim=1))    # KL divergence
-        else:
-            kl_loss = 0
+            # kl_loss = sum(KL_divergence(representation_t, representation_s, device) for representation_t, representation_s in zip(representation_ts, representation_ss))        # KL divergence
+            for i, output_s in enumerate(outputs_s):
+                # kl_loss += nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
+                #                 F.softmax(outputs_t[-1]/self.T, dim=1))    # KL divergence
+                if i!=len(outputs_s)-1:
+                    kl_loss += nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
+                                    F.softmax(outputs_s[-1]/self.T, dim=1))    # KL divergence
         
-        loss = self.lossfunc(output_s, tdata[1])
+        loss = 0
+        for output_s in outputs_s:
+            loss += self.lossfunc(output_s, tdata[1])
         return loss, kl_loss
 
     def pack(self, model, loss):
