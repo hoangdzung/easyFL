@@ -2,7 +2,7 @@ from torchvision import datasets, transforms
 from benchmark.toolkits import ClassifyCalculator, DefaultTaskGen, XYTaskReader
 
 class TaskGen(DefaultTaskGen):
-    def __init__(self, dist_id, num_clients = 1, skewness = 0.5):
+    def __init__(self, dist_id, num_clients = 1, skewness = 0.5,**kwargs):
         super(TaskGen, self).__init__(benchmark='cifar10',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
