@@ -25,7 +25,7 @@ class Model(FModule):
             nn.ReLU()
         )
 
-        self.base_layer3 = nn.Sequential(
+        self.branch2_layer3 = nn.Sequential(
             nn.Conv2d(20, 40, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(40),
             nn.ReLU()
