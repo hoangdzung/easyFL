@@ -40,7 +40,7 @@ class Model(FModule):
         if n >0:
             x = x + self.branch2_layer0(x)
 
-        x = self.base_layer1(X)
+        x = self.base_layer1(x)
         if n>0:
             x = x + self.branch2_layer1(x)
         x = self.base_gap(x)
@@ -54,7 +54,7 @@ class Model(FModule):
         if n >0:
             x = x + self.branch2_layer0(x)
 
-        x = self.base_layer1(X)
+        x = self.base_layer1(x)
         if n>0:
             x = x + self.branch2_layer1(x)
         x = self.base_gap(x)

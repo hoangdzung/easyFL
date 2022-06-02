@@ -223,8 +223,8 @@ class Client(MPBasicClient):
 
 
     def get_loss(self, model, src_model, data, device):
-        tdata = self.data_to_device(data, device)    
-        # output_s, _ = model.pred_and_rep(tdata[0], self.model_type)                  # Student
+        tdata = self.data_to_device(data, device)
+        output_s, _ = model.pred_and_rep(tdata[0], self.model_type)                  # Student
 
         if self.kd_factor >0:
             output_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
@@ -232,7 +232,7 @@ class Client(MPBasicClient):
                                 F.softmax(output_t/self.T, dim=1))    # KL divergence
         else:
             kl_loss = 0
-        
+
         loss = self.lossfunc(output_s, tdata[1])
         return loss, kl_loss
 
