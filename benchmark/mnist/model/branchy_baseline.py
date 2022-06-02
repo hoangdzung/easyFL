@@ -15,12 +15,12 @@ class Model(FModule):
 
         self.base_layer1 = nn.Sequential(
             nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm1d(10),
+            nn.BatchNorm2d(10),
             nn.ReLU()
         )
         self.base_layer2 = nn.Sequential(
             nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm1d(20),
+            nn.BatchNorm2d(20),
             nn.ReLU()
         )
 

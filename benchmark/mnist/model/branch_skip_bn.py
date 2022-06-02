@@ -15,12 +15,12 @@ class Model(FModule):
 
         self.base_layer11 = nn.Sequential(
             nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm1d(10),
+            nn.BatchNorm2d(10),
             nn.ReLU()
         )
         self.branch2_layer12 = nn.Sequential(
             nn.Conv2d(10, 10, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm1d(10),
+            nn.BatchNorm2d(10),
             nn.ReLU(),
             nn.Dropout(0.5)
         )
@@ -29,12 +29,12 @@ class Model(FModule):
 
         self.base_layer21 = nn.Sequential(
             nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm1d(20),
+            nn.BatchNorm2d(20),
             nn.ReLU()
         )
         self.branch2_layer22 = nn.Sequential(
             nn.Conv2d(20, 20, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm1d(20),
+            nn.BatchNorm2d(20),
             nn.ReLU(),
             nn.Dropout(0.5)
         )
@@ -80,7 +80,6 @@ class Model(FModule):
         else:
             x = self.branch1_bn1(x)
 
-        x = self.base_bn1(x)
         x = self.base_layer21(x)
         
         if n!= 0:
@@ -89,7 +88,6 @@ class Model(FModule):
         else:
             x = self.branch1_bn2(x)
 
-        x = self.base_bn2(x)
         x = self.base_gap(x)
         e = self.base_flatten(x)
         o = self.base_fc(e))
