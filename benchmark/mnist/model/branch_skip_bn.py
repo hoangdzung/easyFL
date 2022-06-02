@@ -15,25 +15,31 @@ class Model(FModule):
 
         self.base_layer11 = nn.Sequential(
             nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm1d(10),
             nn.ReLU()
         )
         self.branch2_layer12 = nn.Sequential(
             nn.Conv2d(10, 10, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(10),
             nn.ReLU(),
             nn.Dropout(0.5)
         )
-        self.base_bn1 =  nn.BatchNorm2d(10)
+        self.branch1_bn1 =  nn.BatchNorm2d(10)
+        self.branch2_bn1 =  nn.BatchNorm2d(10)
 
         self.base_layer21 = nn.Sequential(
             nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm1d(20),
             nn.ReLU()
         )
         self.branch2_layer22 = nn.Sequential(
             nn.Conv2d(20, 20, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(20),
             nn.ReLU(),
             nn.Dropout(0.5)
         )
-        self.base_bn2 =  nn.BatchNorm2d(20)
+        self.branch1_bn2 =  nn.BatchNorm2d(20)
+        self.branch2_bn2 =  nn.BatchNorm2d(20)
 
         self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
         self.base_flatten = nn.Flatten()
@@ -45,11 +51,19 @@ class Model(FModule):
     
         if n!=0:
             x = x + self.branch2_layer12(x)
+            x = self.branch2_bn1(x)
+        else:
+            x = self.branch1_bn1(x)
+
         x = self.base_bn1(x)
         x = self.base_layer21(x)
         
         if n!= 0:
             x = x+ self.branch2_layer22(x)
+            x = self.branch2_bn2(x)
+        else:
+            x = self.branch1_bn2(x)
+
         x = self.base_bn2(x)
         x = self.base_gap(x)
         x = self.base_flatten(x)
@@ -62,15 +76,23 @@ class Model(FModule):
     
         if n!=0:
             x = x + self.branch2_layer12(x)
+            x = self.branch2_bn1(x)
+        else:
+            x = self.branch1_bn1(x)
+
         x = self.base_bn1(x)
         x = self.base_layer21(x)
         
         if n!= 0:
             x = x+ self.branch2_layer22(x)
+            x = self.branch2_bn2(x)
+        else:
+            x = self.branch1_bn2(x)
+
         x = self.base_bn2(x)
         x = self.base_gap(x)
         e = self.base_flatten(x)
-        o = self.base_fc(e)
+        o = self.base_fc(e))
         return o, [e]
 
 class Loss(nn.Module):

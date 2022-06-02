@@ -6,23 +6,35 @@ from utils.fmodule import FModule
 class Model(FModule):
     def __init__(self):
         super().__init__()
-        self.base1 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=5, kernel_size=5, stride=1, padding=3)
-        ) 
-        self.flatten = nn.Flatten()
-        self.branch1 = nn.Sequential(
-            nn.MaxPool2d(2, 2),
-            nn.ReLU(), 
-            nn.Conv2d(in_channels=5, out_channels=5, kernel_size=3, stride=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2,2),
-            nn.Flatten(),
-            nn.Linear(20,10)
+        self.base_layer0 = nn.Sequential(
+            nn.Conv2d(1, 5, kernel_size=5, stride=1, padding=3),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(5),
+            nn.ReLU()
         )
+
+        self.base_layer1 = nn.Sequential(
+            nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm1d(10),
+            nn.ReLU()
+        )
+        self.base_layer2 = nn.Sequential(
+            nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm1d(20),
+            nn.ReLU()
+        )
+
+        self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
+        self.base_flatten = nn.Flatten()
+        self.base_fc = torch.nn.Linear(20, 10)
         
     def forward(self, x):
-        x_base = self.base1(x)
-        x = self.branch1(x_base)
+        x = self.base_layer0(x)
+        x = self.base_layer1(x)
+        x = self.base_layer2(x)
+        x = self.base_gap(x)
+        x = self.base_flatten(x)
+        x = self.base_fc(x)
         return x
 
 
