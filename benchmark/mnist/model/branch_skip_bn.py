@@ -55,7 +55,6 @@ class Model(FModule):
         else:
             x = self.branch1_bn1(x)
 
-        x = self.base_bn1(x)
         x = self.base_layer21(x)
         
         if n!= 0:
@@ -64,7 +63,6 @@ class Model(FModule):
         else:
             x = self.branch1_bn2(x)
 
-        x = self.base_bn2(x)
         x = self.base_gap(x)
         x = self.base_flatten(x)
         x = self.base_fc(x)
