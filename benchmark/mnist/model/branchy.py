@@ -6,71 +6,69 @@ from utils.fmodule import FModule
 class Model(FModule):
     def __init__(self):
         super().__init__()
-        self.base = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=5, kernel_size=5, stride=1, padding=3)
-        ) 
-        self.flatten = nn.Flatten()
-        self.branch1 = nn.Sequential(
-            # nn.Conv2d(in_channels=1, out_channels=5, kernel_size=5, stride=1, padding=3)
-            nn.MaxPool2d(2, 2),
-            nn.ReLU(), 
-            nn.Conv2d(in_channels=5, out_channels=5, kernel_size=3, stride=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2,2),
-            nn.Flatten(),
+        self.base_layer0 = nn.Sequential(
+            nn.Conv2d(1, 5, kernel_size=5, stride=1, padding=3),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(5),
+            nn.ReLU()
         )
-        self.fc1 = nn.Linear(20,10)
-            
-        self.branch2 = nn.Sequential(
-            # nn.Conv2d(in_channels=1, out_channels=5, kernel_size=5, stride=1, padding=3)
-            nn.MaxPool2d(2, 2),            
-            nn.ReLU(),
-            nn.Dropout2d(0.5),
-            nn.Conv2d(in_channels=5, out_channels=10, kernel_size=5, stride=1, padding=3),
-            nn.MaxPool2d(2, 2), 
-            nn.ReLU(),
-            nn.Dropout2d(0.5),
-            nn.Conv2d(in_channels=10, out_channels=20, kernel_size=5, stride=1, padding=3),
-            nn.MaxPool2d(2, 2), 
-            nn.ReLU(),
-            nn.Dropout2d(0.5),
-            nn.Flatten(),
-            nn.Linear(500,84),
-            nn.Dropout(0.5)
+
+        self.base_layer1 = nn.Sequential(
+            nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(10),
+            nn.ReLU()
         )
-        self.fc2 = nn.Sequential(
-            nn.ReLU(),
-            nn.Linear(84,10)
+
+        self.base_layer2 = nn.Sequential(
+            nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(20),
+            nn.ReLU()
         )
-        self.exit_threshold = 0.3
+
+        self.base_layer3 = nn.Sequential(
+            nn.Conv2d(20, 40, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(40),
+            nn.ReLU()
+        )
         
+        self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
+        self.base_flatten = nn.Flatten()
+        self.branch1_fc = torch.nn.Linear(20, 10)
+        self.branch2_fc = torch.nn.Linear(40, 10)
+
     def forward(self, x, n=0):
-        x = self.base(x)
-        if n ==0:
-            x = self.branch1(x)
-            x = self.fc1(x)
-            return x 
-            
-        # not_exit = torch.special.entr(F.softmax(x,dim=1)).sum(1) > self.exit_threshold
-
-        # branch_x = x_base[not_exit]
-        x = self.branch2(x)
-        x = self.fc2(x)
-        # x[not_exit, :] =  branch_x
-
-        return x
+        x = self.base_layer0(x)
+        x = self.base_layer1(x)
+        x = self.base_layer2(x)
     
+        if n==0:
+            x = self.base_gap(x)
+            x = self.base_flatten(x)
+            x = self.branch1_fc(x) 
+        else:
+            x = self.branch2_layer3(x)
+            x = self.base_gap(x)
+            x = self.base_flatten(x)
+            x = self.branch2_fc(x)
+        return x
+
     def pred_and_rep(self, x, n):
-        if n ==0:
-            x = self.base(x)
-            e = self.branch1(x)
-            o = self.fc1(e)
+        x = self.base_layer0(x)
+        x = self.base_layer1(x)
+        x = self.base_layer2(x)
+    
+        if n==0:
+            x = self.base_gap(x)
+            e = self.base_flatten(x)
+            o = self.branch1_fc(e) 
             return o, [e]
         else:
-            x = self.base(x)
-            e = self.branch2(x)
-            o = self.fc2(e) 
-            return o, [e]
+            x2 = self.branch2_layer3(x)
+            x2 = self.base_gap(x2)
+            e2 = self.base_flatten(x2)
+            o2 = self.branch2_fc(e2)
+        return o2, [e2]
+        
 
 class Loss(nn.Module):
     def __init__(self):

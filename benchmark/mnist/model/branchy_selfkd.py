@@ -15,23 +15,25 @@ class Model(FModule):
 
         self.base_layer1 = nn.Sequential(
             nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(10),
             nn.ReLU()
         )
 
-        self.base_layer2= nn.Sequential(
+        self.base_layer2 = nn.Sequential(
             nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(20),
             nn.ReLU()
         )
 
-        self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
-        self.base_flatten = nn.Flatten()
-        self.base_fc = torch.nn.Linear(20, 10)
-
-        self.branch2_layer3 = nn.Sequential(
-            nn.Conv2d(20, 40, kernel_size=3, stride=1, padding=1),
+        self.base_layer3 = nn.Sequential(
+            nn.Conv2d(20, 40, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(40),
             nn.ReLU()
         )
+        
+        self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
+        self.base_flatten = nn.Flatten()
+        self.base_fc = torch.nn.Linear(20, 10)
         self.branch2_fc = torch.nn.Linear(40, 10)
 
     def forward(self, x, n=0):
