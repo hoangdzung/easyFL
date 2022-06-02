@@ -145,8 +145,8 @@ class Model(FModule):
             output = self.base_fc(e)
             return [output], [e]
         else:
-            output1 = self.avg_pool(output1)
-            e1 = output.view(output1.size(0), -1)
+            output1 = self.avg_pool(output)
+            e1 = output1.view(output1.size(0), -1)
             output1 = self.base_fc(e1)
 
             output = self.branch2_conv4_x(output)

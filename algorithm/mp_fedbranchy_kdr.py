@@ -242,7 +242,7 @@ class Client(MPBasicClient):
         tdata = self.data_to_device(data, device)    
         output_s, representation_ss = model.pred_and_rep(tdata[0], self.model_type)                  # Student
         if self.kd_factor >0:
-            _ , representation_ts = src_model.pred_and_rep(tdata[0], 1)                    # Teacher
+            _ , representation_ts = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
             kl_loss = sum(KL_divergence(representation_t, representation_s, device) for representation_t, representation_s in zip(representation_ts, representation_ss))        # KL divergence
         else:
             kl_loss = 0
