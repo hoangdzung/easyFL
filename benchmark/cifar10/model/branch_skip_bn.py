@@ -7,20 +7,20 @@ class Model(FModule):
     def __init__(self):
         super().__init__()
         self.base_layer0 = nn.Sequential(
-            nn.Conv2d(3, 5, kernel_size=5, stride=1, padding=3),
+            nn.Conv2d(3, 32, kernel_size=5, stride=1, padding=3),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(5),
+            nn.BatchNorm2d(32),
             nn.ReLU()
         )
 
         self.base_layer11 = nn.Sequential(
-            nn.Conv2d(5, 10, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(10),
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(64),
             nn.ReLU()
         )
         self.branch2_layer12 = nn.Sequential(
-            nn.Conv2d(10, 10, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(10),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.Dropout(0.5)
         )
@@ -28,22 +28,22 @@ class Model(FModule):
         self.branch2_bn1 =  nn.BatchNorm2d(10)
 
         self.base_layer21 = nn.Sequential(
-            nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(20),
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU()
         )
         self.branch2_layer22 = nn.Sequential(
-            nn.Conv2d(20, 20, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(20),
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.Dropout(0.5)
         )
-        self.branch1_bn2 =  nn.BatchNorm2d(20)
-        self.branch2_bn2 =  nn.BatchNorm2d(20)
+        self.branch1_bn2 =  nn.BatchNorm2d(128)
+        self.branch2_bn2 =  nn.BatchNorm2d(128)
 
         self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
         self.base_flatten = nn.Flatten()
-        self.base_fc = torch.nn.Linear(20, 10)
+        self.base_fc = torch.nn.Linear(128, 10)
 
     def forward(self, x, n=0):
         x = self.base_layer0(x)
