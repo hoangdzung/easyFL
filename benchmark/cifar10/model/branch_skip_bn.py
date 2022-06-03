@@ -18,14 +18,14 @@ class Model(FModule):
             nn.BatchNorm2d(64),
             nn.ReLU()
         )
-        self.branch2_layer12 = nn.Sequential(
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Dropout(0.5)
-        )
-        self.branch1_bn1 =  nn.BatchNorm2d(10)
-        self.branch2_bn1 =  nn.BatchNorm2d(10)
+        # self.branch2_layer12 = nn.Sequential(
+        #     nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+        #     nn.BatchNorm2d(64),
+        #     nn.ReLU(),
+        #     nn.Dropout(0.5)
+        # )
+        # self.branch1_bn1 =  nn.BatchNorm2d(10)
+        # self.branch2_bn1 =  nn.BatchNorm2d(10)
 
         self.base_layer21 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
@@ -36,7 +36,7 @@ class Model(FModule):
             nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.Dropout(0.5)
+            # nn.Dropout(0.5)
         )
         self.branch1_bn2 =  nn.BatchNorm2d(128)
         self.branch2_bn2 =  nn.BatchNorm2d(128)
@@ -49,11 +49,11 @@ class Model(FModule):
         x = self.base_layer0(x)
         x = self.base_layer11(x)
     
-        if n!=0:
-            x = x + self.branch2_layer12(x)
-            x = self.branch2_bn1(x)
-        else:
-            x = self.branch1_bn1(x)
+        # if n!=0:
+        #     x = x + self.branch2_layer12(x)
+        #     x = self.branch2_bn1(x)
+        # else:
+        #     x = self.branch1_bn1(x)
 
         x = self.base_layer21(x)
         
@@ -72,11 +72,11 @@ class Model(FModule):
         x = self.base_layer0(x)
         x = self.base_layer11(x)
     
-        if n!=0:
-            x = x + self.branch2_layer12(x)
-            x = self.branch2_bn1(x)
-        else:
-            x = self.branch1_bn1(x)
+        # if n!=0:
+        #     x = x + self.branch2_layer12(x)
+        #     x = self.branch2_bn1(x)
+        # else:
+        #     x = self.branch1_bn1(x)
 
         x = self.base_layer21(x)
         
