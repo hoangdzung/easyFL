@@ -8,48 +8,6 @@ import torch
 import os
 import copy
 
-
-def KL_divergence(teacher_batch_input, student_batch_input, device):
-    """
-    Compute the KL divergence of 2 batches of layers
-    Args:
-        teacher_batch_input: Size N x d
-        student_batch_input: Size N x c
-    
-    Method: Kernel Density Estimation (KDE)
-    Kernel: Gaussian
-    Author: Nguyen Nang Hung
-    """
-    batch_student, _ = student_batch_input.shape
-    batch_teacher, _ = teacher_batch_input.shape
-    
-    assert batch_teacher == batch_student, "Unmatched batch size"
-    
-    teacher_batch_input = teacher_batch_input.to(device).unsqueeze(1)
-    student_batch_input = student_batch_input.to(device).unsqueeze(1)
-    
-    sub_s = student_batch_input - student_batch_input.transpose(0,1)
-    sub_s_norm = torch.norm(sub_s, dim=2)
-    sub_s_norm = sub_s_norm[sub_s_norm!=0].view(batch_student,-1)
-    std_s = torch.std(sub_s_norm)
-    mean_s = torch.mean(sub_s_norm)
-    kernel_mtx_s = torch.pow(sub_s_norm - mean_s, 2) / (torch.pow(std_s, 2) + 0.001)
-    kernel_mtx_s = torch.exp(-1/2 * kernel_mtx_s)
-    kernel_mtx_s = kernel_mtx_s/torch.sum(kernel_mtx_s, dim=1, keepdim=True)
-    
-    sub_t = teacher_batch_input - teacher_batch_input.transpose(0,1)
-    sub_t_norm = torch.norm(sub_t, dim=2)
-    sub_t_norm = sub_t_norm[sub_t_norm!=0].view(batch_teacher,-1)
-    std_t = torch.std(sub_t_norm)
-    mean_t = torch.mean(sub_t_norm)
-    kernel_mtx_t = torch.pow(sub_t_norm - mean_t, 2) / (torch.pow(std_t, 2) + 0.001)
-    kernel_mtx_t = torch.exp(-1/2 * kernel_mtx_t)
-    kernel_mtx_t = kernel_mtx_t/torch.sum(kernel_mtx_t, dim=1, keepdim=True)
-    
-    kl = torch.sum(kernel_mtx_t * torch.log(kernel_mtx_t/kernel_mtx_s))
-    return kl
-
-
 class Server(MPBasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)

@@ -25,21 +25,14 @@ def KL_divergence(teacher_batch_input, student_batch_input, device):
     
     assert batch_teacher == batch_student, "Unmatched batch size"
     
-    teacher_batch_input = teacher_batch_input.to(device).unsqueeze(1)
-    student_batch_input = student_batch_input.to(device).unsqueeze(1)
-    
-    sub_s = student_batch_input - student_batch_input.transpose(0,1)
-    sub_s_norm = torch.norm(sub_s, dim=2)
-    sub_s_norm = sub_s_norm[sub_s_norm!=0].view(batch_student,-1)
+    sub_s_norm = torch.cdist(student_batch_input,student_batch_input).flatten()[1:].view(batch_student-1, batch_student+1)[:,:-1].reshape(batch_student, batch_student-1)
     std_s = torch.std(sub_s_norm)
     mean_s = torch.mean(sub_s_norm)
     kernel_mtx_s = torch.pow(sub_s_norm - mean_s, 2) / (torch.pow(std_s, 2) + 0.001)
     kernel_mtx_s = torch.exp(-1/2 * kernel_mtx_s)
     kernel_mtx_s = kernel_mtx_s/torch.sum(kernel_mtx_s, dim=1, keepdim=True)
     
-    sub_t = teacher_batch_input - teacher_batch_input.transpose(0,1)
-    sub_t_norm = torch.norm(sub_t, dim=2)
-    sub_t_norm = sub_t_norm[sub_t_norm!=0].view(batch_teacher,-1)
+    sub_t_norm = torch.cdist(teacher_batch_input,teacher_batch_input).flatten()[1:].view(batch_teacher-1, batch_teacher+1)[:,:-1].reshape(batch_teacher, batch_teacher-1)
     std_t = torch.std(sub_t_norm)
     mean_t = torch.mean(sub_t_norm)
     kernel_mtx_t = torch.pow(sub_t_norm - mean_t, 2) / (torch.pow(std_t, 2) + 0.001)
@@ -224,22 +217,16 @@ class Client(MPBasicClient):
 
     def get_loss(self, model, src_model, data, device):
         tdata = self.data_to_device(data, device)    
-        outputs_s, _ = model.pred_and_rep(tdata[0], self.model_type)                  # Student
+        output_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
         # outputs_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
 
         kl_loss = 0
         if self.kd_factor >0:
-            # kl_loss = sum(KL_divergence(representation_t, representation_s, device) for representation_t, representation_s in zip(representation_ts, representation_ss))        # KL divergence
-            for i, output_s in enumerate(outputs_s):
-                # kl_loss += nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
-                #                 F.softmax(outputs_t[-1]/self.T, dim=1))    # KL divergence
-                if i!=len(outputs_s)-1:
-                    kl_loss += nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
-                                    F.softmax(outputs_s[-1]/self.T, dim=1))    # KL divergence
-        
-        loss = 0
-        for output_s in outputs_s:
-            loss += self.lossfunc(output_s, tdata[1])
+            for i, representation_s in enumerate(representations_s):
+                if i!=len(representations_s)-1:
+                    kl_loss += KL_divergence(representations_s[-1].detach(), representation_s, device)
+
+        loss = 10*self.lossfunc(output_s, tdata[1])
         return loss, kl_loss
 
     def pack(self, model, loss):

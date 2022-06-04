@@ -7,30 +7,35 @@ class Model(FModule):
     def __init__(self):
         super().__init__()
         self.base_layer0 = nn.Sequential(
-            nn.Conv2d(1, 5, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(1, 5, kernel_size=3, stride=1, padding=3),
             nn.BatchNorm2d(5),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2),
+            # nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            nn.MaxPool2d(2),
+
         )
 
         self.base_layer1 = nn.Sequential(
-            nn.Conv2d(5, 10, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(5, 10, kernel_size=3, stride=1, padding=3),
             nn.BatchNorm2d(10),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2),
+            nn.MaxPool2d(2),
+
+        )
+        self.base_layer12 = nn.Sequential(
+            nn.Conv2d(10, 10, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(10),
+            nn.ReLU(),
         )
         self.base_layer2 = nn.Sequential(
-            nn.Conv2d(10, 20, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(10, 20, kernel_size=3, stride=1, padding=3),
             nn.BatchNorm2d(20),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2),
+            nn.MaxPool2d(2),
         )
         self.base_layer22 = nn.Sequential(
-            nn.Conv2d(20, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Conv2d(64, 20, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(2),
+            nn.Conv2d(20, 20, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(20),
             nn.ReLU(),
         )
         self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
@@ -40,9 +45,9 @@ class Model(FModule):
     def forward(self, x):
         x = self.base_layer0(x)
         x = self.base_layer1(x)
+        x = self.base_layer12(x)
         x = self.base_layer2(x)
-        x = x +self.base_layer22(x)
-        
+        x = self.base_layer22(x)
         x = self.base_gap(x)
         x = self.base_flatten(x)
         x = self.base_fc(x)
