@@ -3,52 +3,10 @@ from pathlib import Path
 from .mp_fedbase import MPBasicServer, MPBasicClient
 import torch.nn as nn
 import numpy as np
-
+import torch.nn.functional as F
 import torch
 import os
 import copy
-
-
-def KL_divergence(teacher_batch_input, student_batch_input, device):
-    """
-    Compute the KL divergence of 2 batches of layers
-    Args:
-        teacher_batch_input: Size N x d
-        student_batch_input: Size N x c
-    
-    Method: Kernel Density Estimation (KDE)
-    Kernel: Gaussian
-    Author: Nguyen Nang Hung
-    """
-    batch_student, _ = student_batch_input.shape
-    batch_teacher, _ = teacher_batch_input.shape
-    
-    assert batch_teacher == batch_student, "Unmatched batch size"
-    
-    teacher_batch_input = teacher_batch_input.to(device).unsqueeze(1)
-    student_batch_input = student_batch_input.to(device).unsqueeze(1)
-    
-    sub_s = student_batch_input - student_batch_input.transpose(0,1)
-    sub_s_norm = torch.norm(sub_s, dim=2)
-    sub_s_norm = sub_s_norm[sub_s_norm!=0].view(batch_student,-1)
-    std_s = torch.std(sub_s_norm)
-    mean_s = torch.mean(sub_s_norm)
-    kernel_mtx_s = torch.pow(sub_s_norm - mean_s, 2) / (torch.pow(std_s, 2) + 0.001)
-    kernel_mtx_s = torch.exp(-1/2 * kernel_mtx_s)
-    kernel_mtx_s = kernel_mtx_s/torch.sum(kernel_mtx_s, dim=1, keepdim=True)
-    
-    sub_t = teacher_batch_input - teacher_batch_input.transpose(0,1)
-    sub_t_norm = torch.norm(sub_t, dim=2)
-    sub_t_norm = sub_t_norm[sub_t_norm!=0].view(batch_teacher,-1)
-    std_t = torch.std(sub_t_norm)
-    mean_t = torch.mean(sub_t_norm)
-    kernel_mtx_t = torch.pow(sub_t_norm - mean_t, 2) / (torch.pow(std_t, 2) + 0.001)
-    kernel_mtx_t = torch.exp(-1/2 * kernel_mtx_t)
-    kernel_mtx_t = kernel_mtx_t/torch.sum(kernel_mtx_t, dim=1, keepdim=True)
-    
-    kl = torch.sum(kernel_mtx_t * torch.log(kernel_mtx_t/kernel_mtx_s))
-    return kl
-
 
 class Server(MPBasicServer):
     def __init__(self, option, model, clients, test_data = None):
@@ -102,7 +60,7 @@ class Server(MPBasicServer):
         else: 
             return -1, -1
             
-    def average_weights(self, models, model_types):
+    def average_weights(models, model_types):
         """
         Returns the average of the weights.
         """
@@ -113,7 +71,7 @@ class Server(MPBasicServer):
                 for i in range(1, len(state_dicts)):
                     w_avg[key] += state_dicts[i][key]
                 w_avg[key] = w_avg[key]/ len(state_dicts)
-            elif key.startswith('branch1'):
+            elif key.startswith('branch1') or key.startswith('fc1'):
                 n=0
                 if model_types[0] == 0:
                     n+=1
@@ -127,7 +85,7 @@ class Server(MPBasicServer):
                     w_avg[key] = w_avg[key]/ n 
                 else:
                     w_avg[key] = state_dicts[0][key]
-            elif key.startswith('branch2'):
+            elif key.startswith('branch2') or key.startswith('fc2'):
                 n=0
                 if model_types[0] == 1:
                     n+=1
@@ -141,6 +99,7 @@ class Server(MPBasicServer):
                     w_avg[key] = w_avg[key]/ n 
                 else:
                     w_avg[key] = state_dicts[0][key]       
+ 
 
         return w_avg
 
@@ -158,38 +117,12 @@ class Server(MPBasicServer):
         model_types = [cp["model_type"] for cp in packages_received_from_clients]
         return models, train_losses, model_types
 
-    def sample(self):
-        """Sample the clients.
-        :param
-            replacement: sample with replacement or not
-        :return
-            a list of the ids of the selected clients
-        """
-        all_clients_type0 = [cid for cid in range(self.num_clients) if self.clients[cid].model_type==0]
-        all_clients_type1 = [cid for cid in range(self.num_clients) if self.clients[cid].model_type==1]
-
-        selected_clients = []
-        # collect all the active clients at this round and wait for at least one client is active and
-        active_clients_type0 = []
-        active_clients_type1 = []
-        while(len(active_clients_type0)<1):
-            active_clients_type0 = [cid for cid in range(self.num_clients) if self.clients[cid].is_active() and self.clients[cid].model_type ==0]
-        while(len(active_clients_type1)<1):
-            active_clients_type1 = [cid for cid in range(self.num_clients) if self.clients[cid].is_active() and self.clients[cid].model_type ==1]
-        # sample clients
-
-        selected_clients_type0 = list(np.random.choice(all_clients_type0, self.clients_per_round//2, replace=False))
-        selected_clients_type1 = list(np.random.choice(all_clients_type1, self.clients_per_round-self.clients_per_round//2, replace=False))
-
-        selected_clients = list(set(selected_clients_type0+selected_clients_type1).intersection(active_clients_type0+active_clients_type1))
-
-        return selected_clients
-
 class Client(MPBasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.lossfunc = nn.CrossEntropyLoss()
         self.kd_factor = 1
+        self.T = 10        
         self.model_type = np.random.randint(0,2)
 
 
@@ -228,6 +161,9 @@ class Client(MPBasicClient):
         src_model.freeze_grad()
                 
         data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, droplast=True)
+        # if self.model_type==0:
+        #     optimizer = self.calculator.get_optimizer(self.optimizer_name, model.branch1(), lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        # else:
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         
         for iter in range(self.epochs):
@@ -245,13 +181,16 @@ class Client(MPBasicClient):
 
 
     def get_loss(self, model, src_model, data, device):
-        tdata = self.data_to_device(data, device)    
-        output_s, representation_ss = model.pred_and_rep(tdata[0], self.model_type)                  # Student
-        _ , representation_ts = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
+        tdata = self.data_to_device(data, device)
+        output_s, _ = model.pred_and_rep(tdata[0], self.model_type)                  # Student
+
         if self.kd_factor >0:
-            kl_loss = sum(KL_divergence(representation_t, representation_s, device) for representation_t, representation_s in zip(representation_ts, representation_ss))        # KL divergence
+            output_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
+            kl_loss = nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
+                                F.softmax(output_t/self.T, dim=1))    # KL divergence
         else:
             kl_loss = 0
+
         loss = self.lossfunc(output_s, tdata[1])
         return loss, kl_loss
 
