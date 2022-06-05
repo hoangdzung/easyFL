@@ -39,8 +39,8 @@ class Model(FModule):
             nn.BatchNorm2d(20),
             nn.ReLU(),
         )
-        self.branch1_bn2 =  nn.BatchNorm2d(20)
-        self.branch2_bn2 =  nn.BatchNorm2d(20)
+        # self.branch1_bn2 =  nn.BatchNorm2d(20)
+        # self.branch2_bn2 =  nn.BatchNorm2d(20)
 
         self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
         self.base_flatten = nn.Flatten()
@@ -59,10 +59,10 @@ class Model(FModule):
         x = self.base_layer21(x)
         
         if n!= 0:
-            x = x+ self.branch2_layer22(x)
-            x = self.branch2_bn2(x)
-        else:
-            x = self.branch1_bn2(x)
+            x = self.branch2_layer22(x)
+        #     x = self.branch2_bn2(x)
+        # else:
+        #     x = self.branch1_bn2(x)
 
         x = self.base_gap(x)
         x = self.base_flatten(x)
@@ -82,10 +82,10 @@ class Model(FModule):
         x = self.base_layer21(x)
         
         if n!= 0:
-            x = x+ self.branch2_layer22(x)
-            x = self.branch2_bn2(x)
-        else:
-            x = self.branch1_bn2(x)
+            x = self.branch2_layer22(x)
+        #     x = self.branch2_bn2(x)
+        # else:
+        #     x = self.branch1_bn2(x)
 
         x = self.base_gap(x)
         e = self.base_flatten(x)
