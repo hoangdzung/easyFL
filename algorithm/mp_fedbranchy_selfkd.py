@@ -156,7 +156,7 @@ class Client(MPBasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.lossfunc = nn.CrossEntropyLoss()
-        self.kd_factor = option["mu"]
+        self.kd_factor = 0
         self.model_type = 0 if np.random.rand() < option['small_machine_rate'] else 1
 
 
@@ -216,7 +216,7 @@ class Client(MPBasicClient):
 
     def get_loss(self, model, src_model, data, device):
         tdata = self.data_to_device(data, device)    
-        output_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
+        outputs_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
         # outputs_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
 
         kl_loss = 0
@@ -224,8 +224,9 @@ class Client(MPBasicClient):
             for i, representation_s in enumerate(representations_s):
                 if i!=len(representations_s)-1:
                     kl_loss += KL_divergence(representations_s[-1].detach(), representation_s, device)
-
-        loss = self.lossfunc(output_s, tdata[1])
+        loss = 0
+        for output_s in outputs_s:
+            loss += self.lossfunc(output_s, tdata[1])
         return loss, kl_loss
 
     def pack(self, model, loss):
