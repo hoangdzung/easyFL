@@ -194,8 +194,8 @@ class Client(MPBasicClient):
         model = model.to(device)
         model.train()
         
-        src_model = copy.deepcopy(model).to(device)
-        src_model.freeze_grad()
+        # src_model = copy.deepcopy(model).to(device)
+        # src_model.freeze_grad()
                 
         data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, droplast=True)
         # if self.model_type==0:
@@ -219,7 +219,7 @@ class Client(MPBasicClient):
 
     def get_loss(self, model, src_model, data, device):
         tdata = self.data_to_device(data, device)    
-        outputs_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
+        output_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
         # outputs_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
 
         kl_loss = 0
@@ -227,9 +227,8 @@ class Client(MPBasicClient):
             for i, representation_s in enumerate(representations_s):
                 if i!=len(representations_s)-1:
                     kl_loss += KL_divergence(representations_s[-1].detach(), representation_s, device)
-        loss = 0
-        for output_s in outputs_s:
-            loss += self.lossfunc(output_s, tdata[1])
+
+        loss = self.lossfunc(output_s, tdata[1])
         return loss, kl_loss
 
     def pack(self, model, loss):
