@@ -7,34 +7,37 @@ class Model(FModule):
     def __init__(self):
         super().__init__()
         self.base_layer0 = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=5, stride=1, padding=3),
-            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=3),
             nn.BatchNorm2d(32),
-            nn.ReLU()
+            nn.ReLU(),
+            # nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            nn.MaxPool2d(2),
+
         )
 
         self.base_layer1 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=3),
             nn.BatchNorm2d(64),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+
         )
 
         self.base_layer2 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=3),
             nn.BatchNorm2d(128),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.MaxPool2d(2),
         )
-
         self.branch2_layer3 = nn.Sequential(
-            nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(256),
-            nn.ReLU()
+            nn.ReLU(),
         )
-        
         self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
         self.base_flatten = nn.Flatten()
-        self.branch1_fc = torch.nn.Linear(128, 10)
         self.branch2_fc = torch.nn.Linear(256, 10)
+        self.branch1_fc = torch.nn.Linear(128, 10)
 
     def forward(self, x, n=0):
         x = self.base_layer0(x)
@@ -58,16 +61,19 @@ class Model(FModule):
         x = self.base_layer2(x)
     
         if n==0:
-            x = self.base_gap(x)
             e = self.base_flatten(x)
-            o = self.branch1_fc(e) 
+            x = self.base_gap(x)
+            x = self.base_flatten(x)
+            o = self.branch1_fc(x) 
             return o, [e]
         else:
-            x2 = self.branch2_layer3(x)
-            x2 = self.base_gap(x2)
-            e2 = self.base_flatten(x2)
-            o2 = self.branch2_fc(e2)
-        return o2, [e2]
+            e1 = self.base_flatten(x)
+            x = self.branch2_layer3(x)
+            e2 = self.base_flatten(x)
+            x = self.base_gap(x)
+            x = self.base_flatten(x)
+            o = self.branch2_fc(x)
+        return o, [e1, e2]
         
 
 class Loss(nn.Module):
