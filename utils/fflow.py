@@ -50,6 +50,7 @@ def read_option():
     parser.add_argument('--net_active', help="controlling the probability of clients being active and obey distribution Beta(active,1)", type=float, default=99999)
     # constructing the heterogeity of computing capability
     parser.add_argument('--capability', help="controlling the difference of local computing capability of each client", type=float, default=0)
+    parser.add_argument('--small_machine_rate', help="proportion of smaller machines", type=float, default=0.5)
 
     # hyper-parameters of different algorithms
     parser.add_argument('--learning_rate_lambda', help='η for λ in afl', type=float, default=0)
@@ -60,7 +61,7 @@ def read_option():
     parser.add_argument('--alpha', help='proportion of clients keeping original direction in FedFV/alpha in fedFA', type=float, default='0.0')
     parser.add_argument('--beta', help='beta in FedFA',type=float, default='1.0')
     parser.add_argument('--gamma', help='gamma in FedFA', type=float, default='0')
-    parser.add_argument('--mu', help='mu in fedprox', type=float, default='0.1')
+    parser.add_argument('--mu', help='mu in fedprox or in fedbranchy', type=float, default='0.1')
     
     # server gpu
     parser.add_argument('--server_gpu_id', help='server process on this gpu', type=int, default=0)
@@ -132,7 +133,7 @@ def initialize(option):
 def output_filename(option, server):
     header = "{}_".format(option["algorithm"])
     for para in server.paras_name: header = header + para + "{}_".format(option[para])
-    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}.json".format(
+    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}_MU{:2f}_1RATE{:2f}.json".format(
         option['model'],
         option['num_rounds'],
         option['batch_size'],
@@ -143,7 +144,9 @@ def output_filename(option, server):
         option['lr_scheduler']+option['learning_rate_decay'],
         option['weight_decay'],
         option['net_drop'],
-        option['net_active'])
+        option['net_active'],
+        option['mu'],
+        option['small_machine_rate'])
     return output_name
 
 class Logger:
