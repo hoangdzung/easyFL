@@ -6,24 +6,51 @@ from utils.fmodule import FModule
 class Model(FModule):
     def __init__(self):
         super().__init__()
-        self.base = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=5, kernel_size=5, stride=1, padding=3),
-            nn.MaxPool2d(2, 2),
-            nn.ReLU(), 
-            nn.Conv2d(in_channels=5, out_channels=5, kernel_size=3, stride=1, padding=1),
+        self.base_layer0 = nn.Sequential(
+            nn.Conv2d(1, 5, kernel_size=3, stride=1, padding=3),
+            nn.BatchNorm2d(5),
             nn.ReLU(),
-            nn.MaxPool2d(2,2),
-        ) 
-        self.flatten = nn.Flatten()
-        self.branch1 = nn.Sequential(
-            nn.Conv2d(in_channels=5, out_channels=1, kernel_size=3, stride=1, padding=0),
-            nn.Flatten(),
-            nn.Linear(25,10)
+            # nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            nn.MaxPool2d(2),
+
         )
+
+        self.base_layer1 = nn.Sequential(
+            nn.Conv2d(5, 10, kernel_size=3, stride=1, padding=3),
+            nn.BatchNorm2d(10),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+
+        )
+        self.base_layer12 = nn.Sequential(
+            nn.Conv2d(10, 10, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(10),
+            nn.ReLU(),
+        )
+        self.base_layer2 = nn.Sequential(
+            nn.Conv2d(10, 20, kernel_size=3, stride=1, padding=3),
+            nn.BatchNorm2d(20),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+        )
+        self.base_layer22 = nn.Sequential(
+            nn.Conv2d(20, 20, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(20),
+            nn.ReLU(),
+        )
+        self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
+        self.base_flatten = nn.Flatten()
+        self.base_fc = torch.nn.Linear(20, 10)
         
     def forward(self, x):
-        x_base = self.base(x)
-        x = self.branch1(x_base)
+        x = self.base_layer0(x)
+        x = self.base_layer1(x)
+        x = self.base_layer12(x)
+        x = self.base_layer2(x)
+        x = self.base_layer22(x)
+        x = self.base_gap(x)
+        x = self.base_flatten(x)
+        x = self.base_fc(x)
         return x
 
 

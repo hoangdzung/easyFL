@@ -25,21 +25,14 @@ def KL_divergence(teacher_batch_input, student_batch_input, device):
     
     assert batch_teacher == batch_student, "Unmatched batch size"
     
-    teacher_batch_input = teacher_batch_input.to(device).unsqueeze(1)
-    student_batch_input = student_batch_input.to(device).unsqueeze(1)
-    
-    sub_s = student_batch_input - student_batch_input.transpose(0,1)
-    sub_s_norm = torch.norm(sub_s, dim=2)
-    sub_s_norm = sub_s_norm[sub_s_norm!=0].view(batch_student,-1)
+    sub_s_norm = torch.cdist(student_batch_input,student_batch_input).flatten()[1:].view(batch_student-1, batch_student+1)[:,:-1].reshape(batch_student, batch_student-1)
     std_s = torch.std(sub_s_norm)
     mean_s = torch.mean(sub_s_norm)
     kernel_mtx_s = torch.pow(sub_s_norm - mean_s, 2) / (torch.pow(std_s, 2) + 0.001)
     kernel_mtx_s = torch.exp(-1/2 * kernel_mtx_s)
     kernel_mtx_s = kernel_mtx_s/torch.sum(kernel_mtx_s, dim=1, keepdim=True)
     
-    sub_t = teacher_batch_input - teacher_batch_input.transpose(0,1)
-    sub_t_norm = torch.norm(sub_t, dim=2)
-    sub_t_norm = sub_t_norm[sub_t_norm!=0].view(batch_teacher,-1)
+    sub_t_norm = torch.cdist(teacher_batch_input,teacher_batch_input).flatten()[1:].view(batch_teacher-1, batch_teacher+1)[:,:-1].reshape(batch_teacher, batch_teacher-1)
     std_t = torch.std(sub_t_norm)
     mean_t = torch.mean(sub_t_norm)
     kernel_mtx_t = torch.pow(sub_t_norm - mean_t, 2) / (torch.pow(std_t, 2) + 0.001)
@@ -109,7 +102,11 @@ class Server(MPBasicServer):
         state_dicts = [model.state_dict() for model in models]
         w_avg = copy.deepcopy(state_dicts[0])
         for key in w_avg.keys():
-            if key.startswith('branch1'):
+            if key.startswith('base'):
+                for i in range(1, len(state_dicts)):
+                    w_avg[key] += state_dicts[i][key]
+                w_avg[key] = w_avg[key]/ len(state_dicts)
+            elif key.startswith('branch1') or key.startswith('fc1'):
                 n=0
                 if model_types[0] == 0:
                     n+=1
@@ -119,8 +116,11 @@ class Server(MPBasicServer):
                     if model_types[i] == 0:
                         w_avg[key] += state_dicts[i][key]
                         n+=1
-                w_avg[key] = w_avg[key]/ n 
-            else:
+                if n>0:
+                    w_avg[key] = w_avg[key]/ n 
+                else:
+                    w_avg[key] = state_dicts[0][key]
+            elif key.startswith('branch2') or key.startswith('fc2'):
                 n=0
                 if model_types[0] == 1:
                     n+=1
@@ -130,7 +130,11 @@ class Server(MPBasicServer):
                     if model_types[i] == 1:
                         w_avg[key] += state_dicts[i][key]
                         n+=1
-                w_avg[key] = w_avg[key]/ n          
+                if n>0:
+                    w_avg[key] = w_avg[key]/ n 
+                else:
+                    w_avg[key] = state_dicts[0][key]       
+ 
 
         return w_avg
 
@@ -152,9 +156,8 @@ class Client(MPBasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.lossfunc = nn.CrossEntropyLoss()
-        self.kd_factor = 1
-        self.T = 10        
-        self.model_type = np.random.randint(0,2)
+        self.kd_factor = option["mu"]
+        self.model_type = 0 if np.random.rand() < option['small_machine_rate'] else 1
 
 
     def test(self, model, dataflag='valid', device='cpu'):
@@ -192,10 +195,10 @@ class Client(MPBasicClient):
         src_model.freeze_grad()
                 
         data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, droplast=True)
-        if self.model_type==0:
-            optimizer = self.calculator.get_optimizer(self.optimizer_name, model.branch1(), lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
-        else:
-            optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        # if self.model_type==0:
+        #     optimizer = self.calculator.get_optimizer(self.optimizer_name, model.branch1(), lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        # else:
+        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         
         for iter in range(self.epochs):
             for batch_id, batch_data in enumerate(data_loader):
@@ -213,14 +216,15 @@ class Client(MPBasicClient):
 
     def get_loss(self, model, src_model, data, device):
         tdata = self.data_to_device(data, device)    
-        output_s, _ = model.pred_and_rep(tdata[0], self.model_type)                  # Student
-        output_t , _ = src_model.pred_and_rep(tdata[0], 1)                    # Teacher
+        output_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
+        # outputs_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
+
+        kl_loss = 0
         if self.kd_factor >0:
-            # kl_loss = sum(KL_divergence(representation_t, representation_s, device) for representation_t, representation_s in zip(representation_ts, representation_ss))        # KL divergence
-            kl_loss = nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
-                            F.softmax(output_t/self.T, dim=1))    # KL divergence
-        else:
-            kl_loss = 0
+            for i, representation_s in enumerate(representations_s):
+                if i!=len(representations_s)-1:
+                    kl_loss += KL_divergence(representations_s[-1].detach(), representation_s, device)
+
         loss = self.lossfunc(output_s, tdata[1])
         return loss, kl_loss
 
