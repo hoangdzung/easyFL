@@ -63,10 +63,10 @@ class Server(MPBasicServer):
             return
         device0 = torch.device(f"cuda:{self.server_gpu_id}")
         models = [i.to(device0) for i in models]
-        self.model = self.aggregate(models, p = [1.0 for cid in self.selected_clients])
+        # self.model = self.aggregate(models, p = [1.0 for cid in self.selected_clients])
 
-        # state_dict = self.average_weights(models, model_types)
-        # self.model.load_state_dict(state_dict)
+        state_dict = self.average_weights(models, model_types, [self.client_vols[cid] for cid in self.selected_clients])
+        self.model.load_state_dict(state_dict)
         return
 
     def test(self, model=None, device=None):
@@ -96,7 +96,7 @@ class Server(MPBasicServer):
         else: 
             return -1, -1
             
-    def average_weights(self, models, model_types):
+    def average_weights(self, models, model_types, weights):
         """
         Returns the average of the weights.
         """
@@ -104,37 +104,43 @@ class Server(MPBasicServer):
         w_avg = copy.deepcopy(state_dicts[0])
         for key in w_avg.keys():
             if key.startswith('base'):
+                w = weights[0]
+                w_avg[key] *= w
                 for i in range(1, len(state_dicts)):
-                    w_avg[key] += state_dicts[i][key]
-                w_avg[key] = w_avg[key]/ len(state_dicts)
-            elif key.startswith('branch1') or key.startswith('fc1'):
-                n=0
+                    w_avg[key] += weights[i]*state_dicts[i][key]
+                    w += weights[i]
+
+                w_avg[key] = w_avg[key]/ w
+            elif key.startswith('branch1'):
                 if model_types[0] == 0:
-                    n+=1
+                    w = weights[0]
+                    w_avg[key] *= w
                 else:
+                    w = 0
                     w_avg[key] = 0
                 for i in range(1, len(state_dicts)):
                     if model_types[i] == 0:
-                        w_avg[key] += state_dicts[i][key]
-                        n+=1
-                if n>0:
-                    w_avg[key] = w_avg[key]/ n 
+                        w_avg[key] += weights[i] * state_dicts[i][key]
+                        w += weights[i]
+                if w > 0:
+                    w_avg[key] = w_avg[key]/ w
                 else:
                     w_avg[key] = state_dicts[0][key]
-            elif key.startswith('branch2') or key.startswith('fc2'):
-                n=0
-                if model_types[0] == 1:
-                    n+=1
+            elif key.startswith('branch2'):
+               if model_types[0] == 1:
+                    w = weights[0]
+                    w_avg[key] *= w
                 else:
+                    w = 0
                     w_avg[key] = 0
                 for i in range(1, len(state_dicts)):
-                    if model_types[i] == 1:
-                        w_avg[key] += state_dicts[i][key]
-                        n+=1
-                if n>0:
-                    w_avg[key] = w_avg[key]/ n 
+                    if model_types[i] == 0:
+                        w_avg[key] += weights[i] * state_dicts[i][key]
+                        w += weights[i]
+                if w > 0:
+                    w_avg[key] = w_avg[key]/ w
                 else:
-                    w_avg[key] = state_dicts[0][key]       
+                    w_avg[key] = state_dicts[0][key]    
 
         return w_avg
 
