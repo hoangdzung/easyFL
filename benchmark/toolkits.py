@@ -183,7 +183,7 @@ class DefaultTaskGen(BasicTaskGen):
             self.skewness = min(max(0, self.skewness),1.0)
             # pair is (id, label)
             dpairs = [[did, self.train_data[did][-1]] for did in range(len(self.train_data))]
-            num = max(int(1.0*self.num_classes-self.skewness*self.num_classes, 1) # each client contains only 'num' labels
+            num = max(int(1.0*self.num_classes-self.skewness*self.num_classes), 1) # each client contains only 'num' labels
             K = self.num_classes
             local_datas = [[] for _ in range(self.num_clients)]
             if num == K:
@@ -244,7 +244,7 @@ class DefaultTaskGen(BasicTaskGen):
             """label_skew_shard"""
             dpairs = [[did, self.train_data[did][-1]] for did in range(len(self.train_data))]
             self.skewness = min(max(0, self.skewness), 1.0)
-            num_shards = max(int(2*(1.0*self.num_classes-self.skewness*self.num_classes), 1) # number of shards in each client
+            num_shards = max(int(2*(1.0*self.num_classes-self.skewness*self.num_classes)), 1) # number of shards in each client
             client_datasize = int(len(self.train_data) / self.num_clients) # size of data in each client
 
             # sorted by label
