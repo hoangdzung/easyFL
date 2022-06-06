@@ -62,7 +62,7 @@ class Model(FModule):
         if n==0:
             x = self.base_gap(x)
             e = self.base_flatten(x)
-            o = self.base_fc(e) 
+            o = self.branch1_fc(e) 
             return o, [e]
         else:
             x1 = self.base_gap(x)

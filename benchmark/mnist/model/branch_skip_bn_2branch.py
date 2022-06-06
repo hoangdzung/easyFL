@@ -1,3 +1,4 @@
+from numpy import expm1
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -59,9 +60,10 @@ class Model(FModule):
         x = self.base_layer21(x)
         
         if n!= 0:
-            x = self.branch2_layer22(x)
+            x = x+self.branch2_layer22(x)
         #     x = self.branch2_bn2(x)
-        # else:
+        else:
+            x *=2
         #     x = self.branch1_bn2(x)
 
         x = self.base_gap(x)
@@ -80,13 +82,12 @@ class Model(FModule):
         #     x = self.branch1_bn1(x)
 
         x = self.base_layer21(x)
-        
         if n!= 0:
-            x = self.branch2_layer22(x)
+            x = x+self.branch2_layer22(x)
         #     x = self.branch2_bn2(x)
-        # else:
+        else:
+            x *=2
         #     x = self.branch1_bn2(x)
-
         x = self.base_gap(x)
         e = self.base_flatten(x)
         o = self.base_fc(e)
