@@ -1,6 +1,7 @@
 from cmath import isnan
 from pathlib import Path
 from .mp_fedbase import MPBasicServer, MPBasicClient
+from .fedbase import BasicServer, BasicClient
 import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
@@ -9,7 +10,7 @@ import os
 import copy
 from collections import defaultdict
 
-class Server(MPBasicServer):
+class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
         self.global_protos = {}
@@ -29,9 +30,9 @@ class Server(MPBasicServer):
             "model" : copy.deepcopy(self.model),
         }
 
-    def iterate(self, t, pool):
+    def iterate(self, t):
         self.selected_clients = self.sample()
-        local_protos, train_losses = self.communicate(self.selected_clients,pool)
+        local_protos, train_losses = self.communicate(self.selected_clients)
         if not self.selected_clients: 
             return
         self.global_protos = self.proto_aggregation(local_protos)
@@ -57,7 +58,7 @@ class Server(MPBasicServer):
 
         return agg_protos_label
         
-    def test(self, model=None, device=None):
+    def test(self, model=None, device=torch.device('cuda')):
         """
         Evaluate the model on the test dataset owned by the server.
         :param
@@ -68,19 +69,23 @@ class Server(MPBasicServer):
         if model==None: 
             model=self.model
         if self.test_data:
-            model.eval()
-            losses = [0,0]
-            eval_metrics = [0,0]
-            data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
-            for batch_id, batch_data in enumerate(data_loader):
-                for i in range(2):
-                    bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device, i)
-                    losses[i] += bmean_loss * len(batch_data[1])
-                    eval_metrics[i] += bmean_eval_metric * len(batch_data[1])
-            for i in range(2):
-                eval_metrics[i] /= len(self.test_data)
-                losses[i] /= len(self.test_data)
-            return eval_metrics, losses
+            losses = []
+            eval_metrics = []
+            for c in self.clients:
+                loss, eval_metric = 0, 0
+                if c.state_dict is not None:
+                    model.load_state_dict(c.state_dict)
+                model.eval()
+                data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
+                for batch_id, batch_data in enumerate(data_loader):
+                    bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device, c.model_type)
+                    loss += bmean_loss * len(batch_data[1])
+                    eval_metric += bmean_eval_metric * len(batch_data[1])
+                eval_metric /= len(self.test_data)
+                loss /= len(self.test_data)
+                losses.append(loss)
+                eval_metrics.append(eval_metric)
+                return np.mean(eval_metrics), np.mean(losses)
         else: 
             return -1, -1
 
@@ -97,7 +102,7 @@ class Server(MPBasicServer):
         train_losses = [cp["train_loss"] for cp in packages_received_from_clients]
         return local_protos, train_losses
 
-class Client(MPBasicClient):
+class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.lossfunc = nn.CrossEntropyLoss()
@@ -118,7 +123,7 @@ class Client(MPBasicClient):
         # unpack the received package
         return received_pkg['model'], received_pkg['global_protos']
 
-    def reply(self, svr_pkg, device):
+    def reply(self, svr_pkg):
         """
         Reply to server with the transmitted package.
         The whole local procedure should be planned here.
@@ -131,12 +136,13 @@ class Client(MPBasicClient):
         :return:
             client_pkg: the package to be send to the server
         """
+        device =torch.device('cuda')
         model, global_protos = self.unpack(svr_pkg)
         if self.state_dict is not None:
             model.load_state_dict(self.state_dict)
         else:
             self.state_dict = copy.deepcopy(model.state_dict())
-        loss = self.train_loss(model, device)
+        loss = self.train_loss(model)
         self.train(model, global_protos, device)
         cpkg = self.pack(loss)
         return cpkg
