@@ -158,38 +158,38 @@ class Server(MPBasicServer):
         model_types = [cp["model_type"] for cp in packages_received_from_clients]
         return models, train_losses, model_types
 
-    def sample(self):
-        """Sample the clients.
-        :param
-            replacement: sample with replacement or not
-        :return
-            a list of the ids of the selected clients
-        """
-        all_clients_type0 = [cid for cid in range(self.num_clients) if self.clients[cid].model_type==0]
-        all_clients_type1 = [cid for cid in range(self.num_clients) if self.clients[cid].model_type==1]
+    # def sample(self):
+    #     """Sample the clients.
+    #     :param
+    #         replacement: sample with replacement or not
+    #     :return
+    #         a list of the ids of the selected clients
+    #     """
+    #     all_clients_type0 = [cid for cid in range(self.num_clients) if self.clients[cid].model_type==0]
+    #     all_clients_type1 = [cid for cid in range(self.num_clients) if self.clients[cid].model_type==1]
 
-        selected_clients = []
-        # collect all the active clients at this round and wait for at least one client is active and
-        active_clients_type0 = []
-        active_clients_type1 = []
-        while(len(active_clients_type0)<1):
-            active_clients_type0 = [cid for cid in range(self.num_clients) if self.clients[cid].is_active() and self.clients[cid].model_type ==0]
-        while(len(active_clients_type1)<1):
-            active_clients_type1 = [cid for cid in range(self.num_clients) if self.clients[cid].is_active() and self.clients[cid].model_type ==1]
-        # sample clients
+    #     selected_clients = []
+    #     # collect all the active clients at this round and wait for at least one client is active and
+    #     active_clients_type0 = []
+    #     active_clients_type1 = []
+    #     while(len(active_clients_type0)<1):
+    #         active_clients_type0 = [cid for cid in range(self.num_clients) if self.clients[cid].is_active() and self.clients[cid].model_type ==0]
+    #     while(len(active_clients_type1)<1):dddd
+    #         active_clients_type1 = [cid for cid in range(self.num_clients) if self.clients[cid].is_active() and self.clients[cid].model_type ==1]
+    #     # sample clients
 
-        selected_clients_type0 = list(np.random.choice(all_clients_type0, self.clients_per_round//2, replace=False))
-        selected_clients_type1 = list(np.random.choice(all_clients_type1, self.clients_per_round-self.clients_per_round//2, replace=False))
+    #     selected_clients_type0 = list(np.random.choice(all_clients_type0, self.clients_per_round//2, replace=False))
+    #     selected_clients_type1 = list(np.random.choice(all_clients_type1, self.clients_per_round-self.clients_per_round//2, replace=False))
 
-        selected_clients = list(set(selected_clients_type0+selected_clients_type1).intersection(active_clients_type0+active_clients_type1))
+    #     selected_clients = list(set(selected_clients_type0+selected_clients_type1).intersection(active_clients_type0+active_clients_type1))
 
-        return selected_clients
+    #     return selected_clients
 
 class Client(MPBasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.lossfunc = nn.CrossEntropyLoss()
-        self.kd_factor = 0
+        self.kd_factor = option['mu']
         self.model_type = np.random.randint(0,2)
 
 

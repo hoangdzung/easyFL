@@ -125,7 +125,7 @@ class Client(MPBasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.lossfunc = nn.CrossEntropyLoss()
-        self.kd_factor = 1
+        self.kd_factor = option['mu']
         self.T = 10        
         self.model_type = np.random.randint(0,2)
 
