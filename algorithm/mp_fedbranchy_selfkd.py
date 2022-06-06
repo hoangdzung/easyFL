@@ -133,14 +133,14 @@ class Server(MPBasicServer):
                     w = 0
                     w_avg[key] = 0
                 for i in range(1, len(state_dicts)):
-                    if model_types[i] == 0:
+                    if model_types[i] == 1:
                         w_avg[key] += weights[i] * state_dicts[i][key]
                         w += weights[i]
                 if w > 0:
                     w_avg[key] = w_avg[key]/ w
                 else:
                     w_avg[key] = state_dicts[0][key]    
-
+        return w_avg
     def unpack(self, packages_received_from_clients):
         """
         Unpack the information from the received packages. Return models and losses as default.
