@@ -60,18 +60,18 @@ class Model(FModule):
         x = self.base_layer2(x)
     
         if n==0:
-            e = self.base_flatten(x)
             x = self.base_gap(x)
-            x = self.base_flatten(x)
-            o = self.branch1_fc(x) 
+            e = self.base_flatten(x)
+            o = self.branch1_fc(e) 
             return o, [e]
         else:
-            e1 = self.base_flatten(x)
+            x1 = self.base_gap(x)
+            e1 = self.base_flatten(x1)
+            # x = x.detach()
             x = self.branch2_layer3(x)
-            e2 = self.base_flatten(x)
             x = self.base_gap(x)
-            x = self.base_flatten(x)
-            o = self.branch2_fc(x)
+            e2 = self.base_flatten(x)
+            o = self.branch2_fc(e2)
         return o, [e1, e2]
         
 
