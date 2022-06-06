@@ -65,25 +65,24 @@ class Server(MPBasicServer):
         :return:
             the metric and loss of the model on the test data
         """
-        return -1, -1
-        # if model==None: 
-        #     model=self.model
-        # if self.test_data:
-        #     model.eval()
-        #     losses = [0,0]
-        #     eval_metrics = [0,0]
-        #     data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
-        #     for batch_id, batch_data in enumerate(data_loader):
-        #         for i in range(2):
-        #             bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device, i)
-        #             losses[i] += bmean_loss * len(batch_data[1])
-        #             eval_metrics[i] += bmean_eval_metric * len(batch_data[1])
-        #     for i in range(2):
-        #         eval_metrics[i] /= len(self.test_data)
-        #         losses[i] /= len(self.test_data)
-        #     return eval_metrics, losses
-        # else: 
-        #     return -1, -1
+        if model==None: 
+            model=self.model
+        if self.test_data:
+            model.eval()
+            losses = [0,0]
+            eval_metrics = [0,0]
+            data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
+            for batch_id, batch_data in enumerate(data_loader):
+                for i in range(2):
+                    bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device, i)
+                    losses[i] += bmean_loss * len(batch_data[1])
+                    eval_metrics[i] += bmean_eval_metric * len(batch_data[1])
+            for i in range(2):
+                eval_metrics[i] /= len(self.test_data)
+                losses[i] /= len(self.test_data)
+            return eval_metrics, losses
+        else: 
+            return -1, -1
 
     def unpack(self, packages_received_from_clients):
         """
@@ -136,7 +135,7 @@ class Client(MPBasicClient):
         if self.state_dict is not None:
             model.load_state_dict(self.state_dict)
         else:
-            self.state_dict = model.state_dict()
+            self.state_dict = copy.deepcopy(model.state_dict())
         loss = self.train_loss(model, device)
         self.train(model, global_protos, device)
         cpkg = self.pack(loss)
@@ -152,7 +151,7 @@ class Client(MPBasicClient):
         :return
             package: a dict that contains the necessary information for the server
         """
-        local_protos = {k: torch.stack(v).mean(0) for k,v in self.local_protos}
+        local_protos = {k: torch.stack(v).mean(0) for k,v in self.local_protos.items()}
         return {
             "local_protos" : local_protos,
             "train_loss": loss,
@@ -169,6 +168,10 @@ class Client(MPBasicClient):
             loss: task specified loss
         """
         dataset = self.train_data if dataflag=='train' else self.valid_data
+        if self.state_dict is not None:
+            model.load_state_dict(self.state_dict)
+        else:
+            self.state_dict = copy.deepcopy(model.state_dict())
         model = model.to(device)
         model.eval()
         loss = 0
@@ -182,12 +185,10 @@ class Client(MPBasicClient):
 
         eval_metric =1.0 * eval_metric / len(dataset)
         loss = 1.0 * loss / len(dataset)
-        del model      
+
         return eval_metric, loss
 
     def train(self, model, global_protos, device):
-        if self.state_dict is not None:
-            model.load_state_dict(self.state_dict)
         model = model.to(device)
         model.train()
         self.local_protos= defaultdict(list)    
@@ -201,8 +202,8 @@ class Client(MPBasicClient):
                 loss = loss + self.kd_factor * proto_loss
                 loss.backward()
                 optimizer.step()
-        self.state_dict = model.state_dict()
-        del model
+        self.state_dict = copy.deepcopy(model.state_dict())
+
         return
     
     
@@ -214,14 +215,20 @@ class Client(MPBasicClient):
         tdata = self.data_to_device(data, device)
         output_s, protos = model.pred_and_rep(tdata[0], self.model_type)                  # Student
 
+        
         if self.kd_factor >0 and len(global_protos) >0:
+            # print(global_protos)
             loss_mse = nn.MSELoss()
             proto_new = copy.deepcopy(protos.data)
-            for i, label in enumerate(tdata[1]):
+
+        for i, label in enumerate(tdata[1]):
+            if self.kd_factor >0 and len(global_protos) >0:
                 if label.item() in global_protos.keys():
                     proto_new[i, :] = global_protos[label.item()][0].data
-                self.local_proto[label.item()].append(protos[i,:])
+                
+            self.local_protos[label.item()].append(protos[i,:].detach())
 
+        if self.kd_factor >0 and len(global_protos) >0:
             kl_loss = loss_mse(proto_new, protos)
         else:
             kl_loss = 0
