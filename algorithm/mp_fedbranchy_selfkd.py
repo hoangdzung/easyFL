@@ -126,7 +126,7 @@ class Server(MPBasicServer):
                 else:
                     w_avg[key] = state_dicts[0][key]
             elif key.startswith('branch2'):
-               if model_types[0] == 1:
+                if model_types[0] == 1:
                     w = weights[0]
                     w_avg[key] *= w
                 else:
@@ -206,7 +206,7 @@ class Client(MPBasicClient):
         for iter in range(self.epochs):
             for batch_id, batch_data in enumerate(data_loader):
                 model.zero_grad()
-                loss, kl_loss = self.get_loss(model, src_model, batch_data, device)
+                loss, kl_loss = self.get_loss(model, batch_data, device)
                 loss = loss + self.kd_factor * kl_loss
                 loss.backward()
                 optimizer.step()
@@ -217,7 +217,7 @@ class Client(MPBasicClient):
         return data[0].to(device), data[1].to(device)
 
 
-    def get_loss(self, model, src_model, data, device):
+    def get_loss(self, model, data, device):
         tdata = self.data_to_device(data, device)    
         outputs_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
         # outputs_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
