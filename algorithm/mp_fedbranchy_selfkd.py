@@ -159,7 +159,8 @@ class Client(MPBasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.lossfunc = nn.CrossEntropyLoss()
-        self.kd_factor = 0
+        self.kd_factor = option['mu']
+        self.self_kd = option['selfkd']
         self.model_type = 0 if np.random.rand() < option['small_machine_rate'] else 1
 
 
@@ -194,9 +195,12 @@ class Client(MPBasicClient):
         model = model.to(device)
         model.train()
         
-        # src_model = copy.deepcopy(model).to(device)
-        # src_model.freeze_grad()
-                
+        if self.kd_factor >0:
+            src_model = copy.deepcopy(model).to(device)
+            src_model.freeze_grad()
+        else:
+            src_model = None 
+
         data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, droplast=True)
         # if self.model_type==0:
         #     optimizer = self.calculator.get_optimizer(self.optimizer_name, model.branch1(), lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
@@ -206,7 +210,7 @@ class Client(MPBasicClient):
         for iter in range(self.epochs):
             for batch_id, batch_data in enumerate(data_loader):
                 model.zero_grad()
-                loss, kl_loss = self.get_loss(model, batch_data, device)
+                loss, kl_loss = self.get_loss(model, src_model, batch_data, device)
                 loss = loss + self.kd_factor * kl_loss
                 loss.backward()
                 optimizer.step()
@@ -217,13 +221,16 @@ class Client(MPBasicClient):
         return data[0].to(device), data[1].to(device)
 
 
-    def get_loss(self, model, data, device):
+    def get_loss(self, model, src_model, data, device):
         tdata = self.data_to_device(data, device)    
         outputs_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
         # outputs_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
 
         kl_loss = 0
-        if self.kd_factor >0:
+        if src_model is not None:
+            outputs_t , representations_t = src_model.pred_and_rep(tdata[0], self.model_type)     
+            kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_t))
+        if self.self_kd:
             for i, representation_s in enumerate(representations_s):
                 if i!=len(representations_s)-1:
                     kl_loss += KL_divergence(representations_s[-1].detach(), representation_s, device)
