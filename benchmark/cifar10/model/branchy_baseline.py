@@ -31,7 +31,7 @@ class Model(FModule):
 
         self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
         self.base_flatten = nn.Flatten()
-        self.base_fc = torch.nn.Linear(256, 10)
+        self.base_fc = torch.nn.Linear(128, 10)
         
     def forward(self, x):
         x = self.base_layer0(x)
