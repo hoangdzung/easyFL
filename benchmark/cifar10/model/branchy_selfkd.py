@@ -7,45 +7,46 @@ class Model(FModule):
     def __init__(self):
         super().__init__()
         self.base_layer0 = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=5, stride=1, padding=3),
+            nn.Conv2d(3, 64, kernel_size=5, stride=1, padding=3),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU()
-        )
-
-        self.base_layer1 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU()
         )
 
-        self.base_layer2 = nn.Sequential(
+        self.base_layer1 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU()
         )
 
-        self.branch2_layer3 = nn.Sequential(
+        self.branch2_layer2 = nn.Sequential(
             nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(256),
+            nn.ReLU()
+        )
+
+        self.branch2_layer3 = nn.Sequential(
+            nn.Conv2d(256, 512, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(512),
             nn.ReLU()
         )
         
         self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
         self.base_flatten = nn.Flatten()
         self.base_fc = torch.nn.Linear(128, 10)
-        self.branch2_fc = torch.nn.Linear(256, 10)
+        self.branch2_fc = torch.nn.Linear(512, 10)
 
     def forward(self, x, n=0):
         x = self.base_layer0(x)
         x = self.base_layer1(x)
-        x = self.base_layer2(x)
+        # x = self.base_layer2(x)
     
         if n==0:
             x = self.base_gap(x)
             x = self.base_flatten(x)
             x = self.base_fc(x) 
         else:
+            x = self.branch2_layer2(x)
             x = self.branch2_layer3(x)
             x = self.base_gap(x)
             x = self.base_flatten(x)
@@ -55,7 +56,7 @@ class Model(FModule):
     def pred_and_rep(self, x, n):
         x = self.base_layer0(x)
         x = self.base_layer1(x)
-        x = self.base_layer2(x)
+        # x = self.base_layer2(x)
     
         if n==0:
             x = self.base_gap(x)
@@ -66,7 +67,8 @@ class Model(FModule):
             x1 = self.base_gap(x)
             e1 = self.base_flatten(x1)
             o1 = self.base_fc(e1) 
-            x2 = self.branch2_layer3(x)
+            x2 = self.branch2_layer2(x)
+            x2 = self.branch2_layer3(x2)
             x2 = self.base_gap(x2)
             e2 = self.base_flatten(x2)
             o2 = self.branch2_fc(e2)

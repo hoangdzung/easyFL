@@ -16,7 +16,7 @@ class Model(FModule):
             nn.ReLU(),
             nn.Flatten(),
         )
-        self.branch1_fc = nn.Linear(640, 10)
+        self.branch1_fc = nn.Linear(490, 10)
 
         self.branch2 = nn.Sequential(
             nn.MaxPool2d(2),
@@ -29,7 +29,7 @@ class Model(FModule):
             nn.ReLU(),
             nn.Flatten(),
         )
-        self.branch2_fc = nn.Linear(720, 10)
+        self.branch2_fc = nn.Linear(500, 10)
 
 
     def forward(self, x, n=0):
