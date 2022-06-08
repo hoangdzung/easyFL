@@ -28,7 +28,11 @@ class MyLogger(flw.Logger):
         valid_metrics, valid_losses = server.test_on_clients(self.current_round, 'valid')
         train_metrics, train_losses = server.test_on_clients(self.current_round, 'train')
         self.output['train_losses'].append(1.0*sum([ck * closs for ck, closs in zip(server.client_vols, train_losses)])/server.data_vol)
-        self.output['mean_valid_accs'].append(1.0*sum([ck * acc for ck, acc in zip(server.client_vols, valid_metrics)])/server.data_vol)
+        if not is_branchy:  
+            self.output['mean_valid_accs'].append(1.0*sum([ck * acc for ck, acc in zip(server.client_vols, valid_metrics)])/server.data_vol)
+        else:
+            self.output['mean_valid_accs'].append([1.0*sum([ck * acc for ck, acc in zip(server.client_vols, valid_metric)])/server.data_vol\
+                for valid_metric in valid_metrics])
         self.output['valid_accs'].append(valid_metrics)
         self.output['test_accs'].append(test_metric)
         self.output['test_losses'].append(test_loss)
@@ -39,20 +43,13 @@ class MyLogger(flw.Logger):
             for cid in range(server.num_clients):
                 self.output['client_accs'][server.clients[cid].name]=[self.output['valid_accs'][i][cid] for i in range(len(self.output['valid_accs']))]
     
-        if not is_branchy:
-            print(self.temp.format("Training Loss:", self.output['train_losses'][-1]))     
-            print(self.temp.format("Testing Loss:", self.output['test_losses'][-1]))
-            print(self.temp.format("Testing Accuracy:", self.output['test_accs'][-1]))   
-            print(self.temp.format("Validating Accuracy:", self.output['mean_valid_accs'][-1]))
-            print(self.temp.format("Mean of Client Accuracy:", self.output['mean_curve'][-1]))
-            print(self.temp.format("Std of Client Accuracy:", self.output['var_curve'][-1]))
+        print("Training Loss:", self.output['train_losses'][-1])    
+        print("Testing Loss:", self.output['test_losses'][-1])
+        print("Testing Accuracy:", self.output['test_accs'][-1]) 
+        # print("Validating Accuracy:", self.output['mean_valid_accs'][-1])
+        print("Mean of Client Accuracy:", self.output['mean_curve'][-1])
+        print("Std of Client Accuracy:", self.output['var_curve'][-1])
 
-        else:
-            print(self.temp.format("Training Loss:", self.output['train_losses'][-1]))
-            print("Testing Loss:", self.output['test_losses'][-1])
-            print("Testing Accuracy:", self.output['test_accs'][-1])
-            print(self.temp.format("Mean of Client Accuracy:", self.output['mean_curve'][-1]))
-            print(self.temp.format("Std of Client Accuracy:", self.output['var_curve'][-1]))
 logger = MyLogger()
 
 def main():
