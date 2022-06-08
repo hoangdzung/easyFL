@@ -22,12 +22,12 @@ class Model(FModule):
             nn.MaxPool2d(2),
 
         )
-        self.base_layer2 = nn.Sequential(
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=3),
-            nn.BatchNorm2d(256),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-        )
+        # self.base_layer2 = nn.Sequential(
+        #     nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=3),
+        #     nn.BatchNorm2d(256),
+        #     nn.ReLU(),
+        #     nn.MaxPool2d(2),
+        # )
 
         self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
         self.base_flatten = nn.Flatten()
@@ -36,7 +36,7 @@ class Model(FModule):
     def forward(self, x):
         x = self.base_layer0(x)
         x = self.base_layer1(x)
-        x = self.base_layer2(x)
+        # x = self.base_layer2(x)
         x = self.base_gap(x)
         x = self.base_flatten(x)
         x = self.base_fc(x)

@@ -1,6 +1,7 @@
 from cmath import isnan
 from pathlib import Path
 from .mp_fedbase import MPBasicServer, MPBasicClient
+from .fedbase import BasicServer, BasicClient
 import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
@@ -43,7 +44,7 @@ def KL_divergence(teacher_batch_input, student_batch_input, device):
     return kl
 
 
-class Server(MPBasicServer):
+class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
         
@@ -55,12 +56,12 @@ class Server(MPBasicServer):
         pass
     
 
-    def iterate(self, t, pool):
+    def iterate(self, t):
         self.selected_clients = self.sample()
-        models, train_losses, model_types = self.communicate(self.selected_clients,pool)
+        models, train_losses, model_types = self.communicate(self.selected_clients)
         if not self.selected_clients: 
             return
-        device0 = torch.device(f"cuda:{self.server_gpu_id}")
+        device0 = torch.device(f"cuda")
         models = [i.to(device0) for i in models]
         # self.model = self.aggregate(models, p = [1.0 for cid in self.selected_clients])
 
@@ -68,7 +69,7 @@ class Server(MPBasicServer):
         self.model.load_state_dict(state_dict)
         return
 
-    def test(self, model=None, device=None):
+    def test(self, model=None, device=torch.device('cuda')):
         """
         Evaluate the model on the test dataset owned by the server.
         :param
@@ -155,7 +156,7 @@ class Server(MPBasicServer):
         model_types = [cp["model_type"] for cp in packages_received_from_clients]
         return models, train_losses, model_types
 
-class Client(MPBasicClient):
+class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.lossfunc = nn.CrossEntropyLoss()
@@ -163,6 +164,24 @@ class Client(MPBasicClient):
         self.self_kd = option['selfkd']
         self.model_type = 0 if np.random.rand() < option['small_machine_rate'] else 1
 
+    def reply(self, svr_pkg):
+        """
+        Reply to server with the transmitted package.
+        The whole local procedure should be planned here.
+        The standard form consists of three procedure:
+        unpacking the server_package to obtain the global model,
+        training the global model, and finally packing the improved
+        model into client_package.
+        :param
+            svr_pkg: the package received from the server
+        :return:
+            client_pkg: the package to be send to the server
+        """
+        model = self.unpack(svr_pkg)
+        loss = self.train_loss(model)
+        self.train(model,torch.device('cuda'))
+        cpkg = self.pack(model, loss)
+        return cpkg
 
     def test(self, model, dataflag='valid', device='cpu'):
         """
