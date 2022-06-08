@@ -85,7 +85,7 @@ class Server(BasicServer):
                 loss /= len(self.test_data)
                 losses.append(loss)
                 eval_metrics.append(eval_metric)
-            return np.mean(eval_metrics), np.mean(losses)
+            return (np.mean(eval_metrics), np.min(eval_metrics), np.max(eval_metrics)), np.mean(losses)
         else: 
             return -1, -1
 

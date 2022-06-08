@@ -20,7 +20,7 @@ class Model(FModule):
             nn.MaxPool2d(2),
         )
 
-        self.branch2_layer2 = nn.Sequential(
+        self.base_layer2 = nn.Sequential(
             nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(),
@@ -28,34 +28,49 @@ class Model(FModule):
         )
 
         self.branch2_layer3 = nn.Sequential(
-            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(512),
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
             nn.ReLU(),
             nn.MaxPool2d(2),
         )
         
         self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
         self.base_flatten = nn.Flatten()
-        self.base_fc = torch.nn.Linear(128, 10)
-        self.branch2_fc = torch.nn.Linear(512, 10)
+        self.base_fc = torch.nn.Linear(256, 10)
 
     def forward(self, x, n=0):
         x = self.base_layer0(x)
         x = self.base_layer1(x)
-        # x = self.base_layer2(x)
+        x = self.base_layer2(x)
     
         if n==0:
             x = self.base_gap(x)
             x = self.base_flatten(x)
             x = self.base_fc(x) 
         else:
-            x = self.branch2_layer2(x)
             x = self.branch2_layer3(x)
             x = self.base_gap(x)
             x = self.base_flatten(x)
-            x = self.branch2_fc(x)
+            x = self.base_fc(x)
         return x
-        
+
+
+    def pred_and_rep(self, x, n=0):
+        x = self.base_layer0(x)
+        x = self.base_layer1(x)
+        x = self.base_layer2(x)
+    
+        if n==0:
+            x = self.base_gap(x)
+            e = self.base_flatten(x)
+            x = self.base_fc(e) 
+        else:
+            x = self.branch2_layer3(x)
+            x = self.base_gap(x)
+            e = self.base_flatten(x)
+            x = self.base_fc(e)
+        return x, e
+
 class Loss(nn.Module):
     def __init__(self):
         super(Loss, self).__init__()
