@@ -134,7 +134,7 @@ def initialize(option):
 def output_filename(option, server):
     header = "{}_".format(option["algorithm"])
     for para in server.paras_name: header = header + para + "{}_".format(option[para])
-    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}_MU{:2f}_1RATE{:2f}.json".format(
+    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}_MU{:.2f}_1RATE{:.2f}_SELFKD{}.json".format(
         option['model'],
         option['num_rounds'],
         option['batch_size'],
@@ -147,7 +147,8 @@ def output_filename(option, server):
         option['net_drop'],
         option['net_active'],
         option['mu'],
-        option['small_machine_rate'])
+        option['small_machine_rate'],
+        option['selfkd'])
     return output_name
 
 class Logger:
