@@ -40,8 +40,8 @@ class Model(FModule):
         
         self.b012_gap = torch.nn.AdaptiveAvgPool2d(1)
         self.b012_flatten = nn.Flatten()
-        self.b012_fc = torch.nn.Linear(64, 10)
-        self.b12_fc = torch.nn.Linear(128, 10)
+        self.b0__fc = torch.nn.Linear(64, 10)
+        self.b1_fc = torch.nn.Linear(128, 10)
         self.b2_fc = torch.nn.Linear(256, 10)
 
     def forward(self, x, n=0):
@@ -51,14 +51,14 @@ class Model(FModule):
         if n==0:
             x = self.b012_gap(x)
             x = self.b012_flatten(x)
-            x = self.b012_fc(x) 
+            x = self.b0_fc(x) 
             return x
 
         x = self.b12_layer2(x)
         if n==1:
             x = self.b012_gap(x)
             x = self.b012_flatten(x)
-            x = self.b12_fc(x) 
+            x = self.b1_fc(x) 
             return x
 
         x = self.b2_layer3(x)
@@ -69,38 +69,28 @@ class Model(FModule):
              
 
     def pred_and_rep(self, x, n):
-        os, es =[], []
         x = self.b012_layer0(x)
         x = self.b012_layer1(x)
-    
         x1 = self.b012_gap(x)
-        e1 = self.b012_flatten(x1)
-        o1 = self.b012_fc(e1) 
-        os.append(o1)
-        es.append(e1)
-        
+        e1 = self.b012_flatten(x)
+
         if n==0:
-            return os, es 
+            o = self.b0_fc(e1) 
+            return o, [e1]
 
         x = self.b12_layer2(x)
-
         x2 = self.b012_gap(x)
         e2 = self.b012_flatten(x2)
-        o2 = self.b12_fc(e2) 
-        os.append(o2)
-        es.append(e2)
-        
+
         if n==1:
-            return os, es 
+            o = self.b1_fc(e2) 
+            return o, [e1, e2]
 
         x = self.b2_layer3(x)
-
         x3 = self.b012_gap(x)
         e3 = self.b012_flatten(x3)
-        o3 = self.b2_fc(e3) 
-        os.append(o3)
-        es.append(e3)
-        return os, es 
+        o = self.b2_fc(e3) 
+        return o, [e1,e2,e3]
 
 class Loss(nn.Module):
     def __init__(self):

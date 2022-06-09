@@ -196,12 +196,12 @@ class Client(BasicClient):
         return eval_metric, loss
 
     def train(self, model, device):
-        if self.step%3==0:
-            self.weights = [1, 0, 0]
-        elif self.step%3==1:
-            self.weights = [1,1,0]
-        else:
-            self.weights = [1,1,1]
+        # if self.step%3==0:
+        #     self.weights = [1, 0, 0]
+        # elif self.step%3==1:
+        #     self.weights = [1,1,0]
+        # else:
+        #     self.weights = [1,1,1]
         model = model.to(device)
         model.train()
         
@@ -239,27 +239,16 @@ class Client(BasicClient):
         if src_model is not None:
             outputs_t , representations_t = src_model.pred_and_rep(tdata[0], self.model_type)     
             kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_t))
-        if self.self_kd:
+        kl_loss *= self.kd_factor
+
+        if self.self_kd > 0:
             temp = [nn.KLDivLoss()(F.log_softmax(i/self.T, dim=1),
                                 F.softmax(outputs_s[-1].detach()/self.T, dim=1))*(self.T**2) for i in outputs_s[:-1] ]
-            # print("kl_loss:", temp)
-            kl_loss += sum(temp)
-            # for i, output_s in enumerate(outputs_s):
-            #     if i!=len(outputs_s)-1:
-            #         kl_loss += 0.1*nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
-            #                     F.softmax(outputs_s[-1].detach()/self.T, dim=1))*(self.T**2)
-                    # kl_loss += 0.1*KL_divergence(representations_s[-1].detach(),representations_s[i] ,device)
+            kl_loss += self.self_kd* sum(temp)
+  
         if type(outputs_s) ==list:
-            weights = [1, 0.5,0.3]
-            # loss = 0
-            # w_loss = 0
-            # for output_s in outputs_s:
-            #     p_loss = self.lossfunc(output_s, tdata[1])
-            #     loss = p_loss.detach().item() * p_loss
-            #     w_loss += p_loss.detach().item()
-            # loss = loss/w_loss
+            weights = [1, 0.5,0.3
             temp = [self.lossfunc(output_s, tdata[1]) for weight, output_s in zip(weights, outputs_s)]
-            # print("loss:", temp)
             loss = sum(temp)
         else:
             loss = self.lossfunc(outputs_s, tdata[1])
