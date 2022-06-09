@@ -144,6 +144,7 @@ class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.lossfunc = nn.CrossEntropyLoss()
+        self.label_split = train_data.get_all_labels()
         self.kd_factor = option['mu']
         self.self_kd = option['selfkd']
         self.model_type = np.random.randint(0,3)
@@ -238,20 +239,20 @@ class Client(BasicClient):
         kl_loss = 0
         if src_model is not None:
             outputs_t , representations_t = src_model.pred_and_rep(tdata[0], self.model_type)     
-            kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_t))
-        kl_loss *= self.kd_factor
+            kl_loss += self.kd_factor * sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_t))
 
         if self.self_kd > 0:
-            temp = [nn.KLDivLoss()(F.log_softmax(i/self.T, dim=1),
-                                F.softmax(outputs_s[-1].detach()/self.T, dim=1))*(self.T**2) for i in outputs_s[:-1] ]
-            kl_loss += self.self_kd* sum(temp)
+            kl_loss += self.self_kd* sum([KL_divergence(r_s, representations_s[0], device) for r_s in representations_s[-1]])
   
-        if type(outputs_s) ==list:
-            weights = [1, 0.5,0.3
-            temp = [self.lossfunc(output_s, tdata[1]) for weight, output_s in zip(weights, outputs_s)]
-            loss = sum(temp)
-        else:
-            loss = self.lossfunc(outputs_s, tdata[1])
+        # if type(outputs_s) ==list:
+        #     temp = [self.lossfunc(output_s, tdata[1]) for weight, output_s in zip(weights, outputs_s)]
+        #     loss = sum(temp)
+        # else:
+        label_mask = torch.zeros(outputs_s.shape[-1], device=device)
+        label_mask[self.label_split] = 1
+        outputs_s = outputs_s.masked_fill(label_mask == 0, 0)
+
+        loss = self.lossfunc(outputs_s, tdata[1])
         # print(loss, kl_loss)
         return loss, kl_loss
 
