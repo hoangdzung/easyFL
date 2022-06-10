@@ -14,7 +14,6 @@ class Model(FModule):
         )
 
         self.1branch = nn.Sequential(
-            nn.MaxPool2d(2),
             nn.ReLU(),
             nn.Conv2d(5, 10, kernel_size=3, stride=1, padding=1),
             nn.MaxPool2d(2),

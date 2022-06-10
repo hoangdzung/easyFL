@@ -68,7 +68,7 @@ class Server(MPBasicServer):
         self.model.load_state_dict(state_dict)
         return
 
-    def test(self, model=None, device=None):
+    def test(self, model=None, device=torch.device('cuda')):
         """
         Evaluate the model on the test dataset owned by the server.
         :param
@@ -81,16 +81,32 @@ class Server(MPBasicServer):
         if self.test_data:
             model.eval()
             losses = [0,0]
-            eval_metrics = [0,0]
+            eval_metrics = [0,0,0]
             data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
             for batch_id, batch_data in enumerate(data_loader):
-                for i in range(2):
-                    bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device, i)
-                    losses[i] += bmean_loss * len(batch_data[1])
+                tdata = self.calculator.data_to_device(batch_data, device)
+                output1, output0 = model(tdata[0], 1)
+
+                for i, output in enumerate([output0, output1]):
+                    bmean_loss = self.calculator.lossfunc(output, tdata[-1])
+                    losses[i] += bmean_loss.item() * len(batch_data[1])
+
+                    y_pred = output.data.max(1, keepdim=True)[1]
+                    correct = y_pred.eq(tdata[1].data.view_as(y_pred)).long().cpu().sum()
+                    bmean_eval_metric = (1.0 * correct / len(tdata[1])).item()
                     eval_metrics[i] += bmean_eval_metric * len(batch_data[1])
+
+                ensemble_output = (output0+output1)/2
+                ensemble_y_pred = ensemble_output.data.max(1, keepdim=True)[1]
+                ensemble_correct = ensemble_y_pred.eq(tdata[1].data.view_as(ensemble_y_pred)).long().cpu().sum()
+                ensemble_bmean_eval_metric = (1.0 * ensemble_correct / len(tdata[1])).item()
+                eval_metrics[2] += ensemble_bmean_eval_metric * len(batch_data[1])
+
             for i in range(2):
                 eval_metrics[i] /= len(self.test_data)
                 losses[i] /= len(self.test_data)
+            eval_metrics[2] /= len(self.test_data)
+
             return eval_metrics, losses
         else: 
             return -1, -1
@@ -102,44 +118,23 @@ class Server(MPBasicServer):
         state_dicts = [model.state_dict() for model in models]
         w_avg = copy.deepcopy(state_dicts[0])
         for key in w_avg.keys():
-            if key.startswith('base'):
+            branches = [int(i) for i in key.split('_')[0]]
+            if model_types[0] in branches:
                 w = weights[0]
                 w_avg[key] *= w
-                for i in range(1, len(state_dicts)):
-                    w_avg[key] += weights[i]*state_dicts[i][key]
+            else:
+                w = 0
+                w_avg[key] = 0
+                
+            for i in range(1, len(state_dicts)):
+                if model_types[i] in branches:
+                    w_avg[key] += weights[i] * state_dicts[i][key]
                     w += weights[i]
-
+            if w > 0:
                 w_avg[key] = w_avg[key]/ w
-            elif key.startswith('branch1'):
-                if model_types[0] == 0:
-                    w = weights[0]
-                    w_avg[key] *= w
-                else:
-                    w = 0
-                    w_avg[key] = 0
-                for i in range(1, len(state_dicts)):
-                    if model_types[i] == 0:
-                        w_avg[key] += weights[i] * state_dicts[i][key]
-                        w += weights[i]
-                if w > 0:
-                    w_avg[key] = w_avg[key]/ w
-                else:
-                    w_avg[key] = state_dicts[0][key]
-            elif key.startswith('branch2'):
-                if model_types[0] == 1:
-                    w = weights[0]
-                    w_avg[key] *= w
-                else:
-                    w = 0
-                    w_avg[key] = 0
-                for i in range(1, len(state_dicts)):
-                    if model_types[i] == 1:
-                        w_avg[key] += weights[i] * state_dicts[i][key]
-                        w += weights[i]
-                if w > 0:
-                    w_avg[key] = w_avg[key]/ w
-                else:
-                    w_avg[key] = state_dicts[0][key]    
+            else:
+                w_avg[key] = state_dicts[0][key]
+               
         return w_avg
     def unpack(self, packages_received_from_clients):
         """
@@ -164,7 +159,7 @@ class Client(MPBasicClient):
         self.model_type = 0 if np.random.rand() < option['small_machine_rate'] else 1
 
 
-    def test(self, model, dataflag='valid', device='cpu'):
+    def test(self, model, dataflag='valid', device=torch.device('cuda')):
         """
         Evaluate the model with local data (e.g. training data or validating data).
         :param
@@ -179,17 +174,42 @@ class Client(MPBasicClient):
         model.eval()
         loss = 0
         eval_metric = 0
+        ensemble_eval_metric = 0
+        
         data_loader = self.calculator.get_data_loader(dataset, batch_size=64)
         for batch_id, batch_data in enumerate(data_loader):
-            bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data,device, self.model_type)
+            with torch.no_grad():
+                tdata = self.calculator.data_to_device(batch_data, device)
+                outputs, output2 = model(tdata[0], self.model_type)
 
-            loss += bmean_loss * len(batch_data[1])
-            eval_metric += bmean_eval_metric * len(batch_data[1])
+                bmean_loss = self.calculator.lossfunc(outputs, tdata[-1])
+                loss += bmean_loss.item() * len(batch_data[1])
+
+                y_pred = outputs.data.max(1, keepdim=True)[1]
+                correct = y_pred.eq(tdata[1].data.view_as(y_pred)).long().cpu().sum()
+                bmean_eval_metric = (1.0 * correct / len(tdata[1])).item()
+                eval_metric += bmean_eval_metric * len(batch_data[1])
+
+                if output2 is not None:
+                    ensemble_output = (outputs+output2)/2
+                    ensemble_y_pred = ensemble_output.data.max(1, keepdim=True)[1]
+                    ensemble_correct = ensemble_y_pred.eq(tdata[1].data.view_as(ensemble_y_pred)).long().cpu().sum()
+                    ensemble_bmean_eval_metric = (1.0 * ensemble_correct / len(tdata[1])).item()
+                    ensemble_eval_metric += ensemble_bmean_eval_metric * len(batch_data[1])
+                else:
+                    ensemble_eval_metric += bmean_eval_metric * len(batch_data[1])
 
         eval_metric =1.0 * eval_metric / len(dataset)
+        ensemble_eval_metric =1.0 * ensemble_eval_metric / len(dataset)
         loss = 1.0 * loss / len(dataset)
         
-        return eval_metric, loss
+        return (eval_metric, ensemble_eval_metric), loss
+
+    def data_to_device(self, data, device=torch.device('cuda')):
+        if device is None:
+            return data[0].to(self.device), data[1].to(self.device)
+        else:
+            return data[0].to(device), data[1].to(device)
 
     def train(self, model, device):
         model = model.to(device)
@@ -237,7 +257,7 @@ class Client(MPBasicClient):
         if type(outputs_s) ==list:
             loss = sum([self.lossfunc(output_s, tdata[1]) for output_s in outputs_s])
         else:
-            loss = self.lossfunc(output_s, tdata[1])
+            loss = self.lossfunc(outputs_s, tdata[1])
         return loss, kl_loss
 
     def pack(self, model, loss):
