@@ -81,7 +81,7 @@ class Model(FModule):
         super().__init__()
         self.in_channels = 64
         self.conv1 = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, padding=1, bias=False),
+            nn.Conv2d(1, 64, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True))
         #we use a different inputsize than the original paper
@@ -91,7 +91,7 @@ class Model(FModule):
         # self.conv4_x = self._make_layer(block, 256, num_block[2], 2)
         # self.conv5_x = self._make_layer(block, 512, num_block[3], 2)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fc = nn.Linear(128 * block.expansion, num_classes)
 
     def _make_layer(self, block, out_channels, num_blocks, stride):
         """make resnet layers(by layer i didnt mean this 'layer' was the
