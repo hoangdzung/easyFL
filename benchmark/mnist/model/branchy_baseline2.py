@@ -9,7 +9,7 @@ class Model(FModule):
         self.base_layer0 = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(32),
-            nn.ReLU()
+            nn.ReLU(),
             nn.MaxPool2d(2),
 
         )
