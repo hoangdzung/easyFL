@@ -146,6 +146,7 @@ class Client(BasicClient):
         self.lossfunc = nn.CrossEntropyLoss()
         self.kd_factor = option['mu']
         self.self_kd = option['selfkd']
+        self.weighted = option['weighted']
         self.model_type = np.random.randint(0,3)
         self.T = 3
         self.step=0
@@ -238,7 +239,7 @@ class Client(BasicClient):
         kl_loss = 0
         if src_model is not None:
             outputs_t , representations_t = src_model.pred_and_rep(tdata[0], self.model_type)     
-            kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_t))
+            kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t[:1], representations_t))
         if self.self_kd:
             temp = [nn.KLDivLoss()(F.log_softmax(i/self.T, dim=1),
                                 F.softmax(outputs_s[-1].detach()/self.T, dim=1))*(self.T**2) for i in outputs_s[:-1] ]
@@ -250,7 +251,7 @@ class Client(BasicClient):
             #                     F.softmax(outputs_s[-1].detach()/self.T, dim=1))*(self.T**2)
                     # kl_loss += 0.1*KL_divergence(representations_s[-1].detach(),representations_s[i] ,device)
         if type(outputs_s) ==list:
-            weights = [1, 0.5,0.3]
+            weights = [1, 0.5,0.5]
             # loss = 0
             # w_loss = 0
             # for output_s in outputs_s:
@@ -258,7 +259,10 @@ class Client(BasicClient):
             #     loss = p_loss.detach().item() * p_loss
             #     w_loss += p_loss.detach().item()
             # loss = loss/w_loss
-            temp = [self.lossfunc(output_s, tdata[1]) for weight, output_s in zip(weights, outputs_s)]
+            if self.weighted:
+                temp = [weight*self.lossfunc(output_s, tdata[1]) for weight, output_s in zip(weights, outputs_s)]
+            else:
+                temp = [self.lossfunc(output_s, tdata[1]) for weight, output_s in zip(weights, outputs_s)]
             # print("loss:", temp)
             loss = sum(temp)
         else:

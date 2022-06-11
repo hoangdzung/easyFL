@@ -51,9 +51,16 @@ class TaskGen(DefaultTaskGen):
         df = pd.read_csv(os.path.join(self.rawdata_path, './train_df.csv'))
         df = df[df['Target'].apply(lambda x: x.strip().isnumeric())]
         labels = df.Target.apply(int).values.tolist()
-        image_paths = [os.path.join(self.rawdata_path,i) for i in df.image_path.values]
-        path_train, path_test, y_train, y_test = train_test_split(image_paths, labels,
-                                                            stratify=labels, 
+        label_freq = dict(Counter(labels))
+        selected_labels = [k for k,v in label_freq.items() if v>=40]
+        filtered_image_paths, filtered_labels = [], []
+        for label, image_path in zip(labels, df.image_path.values):
+            if label in selected_labels:
+                filtered_labels.append(selected_labels.index(label))
+                filtered_image_paths.append(os.path.join('data',image_path))
+        image_paths = [os.path.join(self.,i) for i in df.image_path.values]
+        path_train, path_test, y_train, y_test = train_test_split(filtered_image_paths, filtered_labels,
+                                                            stratify=filtered_labels, 
                                                             test_size=0.25,
                                                             random_state=self.seed)
         self.train_data = CustomImageDataset(y_train, path_train, transform=transforms.Compose([transforms.Resize([256,256 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
