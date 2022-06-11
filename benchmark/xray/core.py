@@ -57,14 +57,14 @@ class TaskGen(DefaultTaskGen):
         for label, image_path in zip(labels, df.image_path.values):
             if label in selected_labels:
                 filtered_labels.append(selected_labels.index(label))
-                filtered_image_paths.append(os.path.join('data',image_path))
-        image_paths = [os.path.join(self.,i) for i in df.image_path.values]
+                filtered_image_paths.append(os.path.join(self.rawdata_path,image_path))
+        #image_paths = [os.path.join(self.,i) for i in df.image_path.values]
         path_train, path_test, y_train, y_test = train_test_split(filtered_image_paths, filtered_labels,
                                                             stratify=filtered_labels, 
                                                             test_size=0.25,
                                                             random_state=self.seed)
-        self.train_data = CustomImageDataset(y_train, path_train, transform=transforms.Compose([transforms.Resize([256,256 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
-        self.test_data = CustomImageDataset(y_test, path_test, transform=transforms.Compose([transforms.Resize([256,256 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
+        self.train_data = CustomImageDataset(y_train, path_train, transform=transforms.Compose([transforms.Resize([96,96 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
+        self.test_data = CustomImageDataset(y_test, path_test, transform=transforms.Compose([transforms.Resize([96,96 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
 
     def convert_data_for_saving(self):
         train_x = [self.train_data[did][0].tolist() for did in range(len(self.train_data))]
