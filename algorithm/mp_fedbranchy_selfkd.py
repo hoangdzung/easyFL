@@ -118,8 +118,8 @@ class Server(MPBasicServer):
         state_dicts = [model.state_dict() for model in models]
         w_avg = copy.deepcopy(state_dicts[0])
         for key in w_avg.keys():
-            branches = [int(i) for i in key.split('_')[0]]
-            if model_types[0] in branches:
+            # branches = [int(i) for i in key.split('_')[0]]
+            if 'branch_{}'.format(model_types[0]) in key:
                 w = weights[0]
                 w_avg[key] *= w
             else:
@@ -127,7 +127,7 @@ class Server(MPBasicServer):
                 w_avg[key] = 0
                 
             for i in range(1, len(state_dicts)):
-                if model_types[i] in branches:
+                if 'branch_{}'.format(model_types[i]) in key:
                     w_avg[key] += weights[i] * state_dicts[i][key]
                     w += weights[i]
             if w > 0:

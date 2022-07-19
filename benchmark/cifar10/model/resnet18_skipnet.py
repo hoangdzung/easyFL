@@ -9,6 +9,7 @@
 """
 import torch.nn as nn
 from utils.fmodule import FModule
+from collections import OrderedDict
 
 class BasicBlock(nn.Module):
     """Basic Block for resnet 18 and resnet 34
@@ -77,7 +78,7 @@ class BottleNeck(nn.Module):
         return nn.ReLU(inplace=True)(self.residual_function(x) + self.shortcut(x))
 
 class Model(FModule):
-    def __init__(self, block=BasicBlock, num_block=[1,1,1,1], num_classes=10):
+    def __init__(self, block=BasicBlock, num_block=[2,2,2,2], num_classes=10):
         super().__init__()
         self.in_channels = 64
         self.conv1 = nn.Sequential(
@@ -112,11 +113,14 @@ class Model(FModule):
         # could be 1 or 2, other blocks would always be 1
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
-        for stride in strides:
-            layers.append(block(self.in_channels, out_channels, stride))
+        for stride in strides[:len(strides)//2]:
+            layers.append(('branch_0_branch_1',block(self.in_channels, out_channels, stride)))
             self.in_channels = out_channels * block.expansion
+        for stride in strides[len(strides)//2:]:
+            layers.append(('branch_1',block(self.in_channels, out_channels, stride)))
+            self.in_channels = out_channels * block.expansion
+        return nn.Sequential(OrderedDict(layers))
 
-        return nn.Sequential(*layers)
 
     def forward(self, x):
         output = self.conv1(x)
