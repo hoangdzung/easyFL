@@ -113,7 +113,6 @@ class Model(FModule):
         # we have num_block blocks per layer, the first block
         # could be 1 or 2, other blocks would always be 1
         strides = [stride] + [1] * (num_blocks - 1)
-        layers = []
         for i, stride in enumerate(strides[:len(strides)//2]):
             setattr(self, 'b01_{}_{}'.format(name, i),block(self.in_channels, out_channels, stride))
             self.in_channels = out_channels * block.expansion
@@ -122,7 +121,7 @@ class Model(FModule):
             self.in_channels = out_channels * block.expansion
 
     def forward(self, x, model_type):
-        x = self.conv1(x)
+        x = self.b01_conv1(x)
         x = self.b01_conv2_x_0(x)
         if model_type ==1:
             x = self.b1_conv2_x_0(x)
@@ -140,12 +139,12 @@ class Model(FModule):
             x = self.b1_conv5_x_0(x)
 
         x = self.avg_pool(x)
-        x = output.view(x.size(0), -1)
+        x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
 
     def pred_and_rep(self, x, model_type):
-        x = self.conv1(x)
+        x = self.b01_conv1(x)
         x = self.b01_conv2_x_0(x)
         if model_type ==1:
             x = self.b1_conv2_x_0(x)
@@ -163,7 +162,7 @@ class Model(FModule):
             x = self.b1_conv5_x_0(x)
 
         x = self.avg_pool(x)
-        e = output.view(x.size(0), -1)
+        e = x.view(x.size(0), -1)
         o = self.fc(e)
         return [0], [e]
 
