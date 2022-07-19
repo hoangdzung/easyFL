@@ -81,20 +81,21 @@ class Model(FModule):
     def __init__(self, block=BasicBlock, num_block=[2,2,2,2], num_classes=10):
         super().__init__()
         self.in_channels = 64
-        self.conv1 = nn.Sequential(
+        self.b01_conv1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True))
         #we use a different inputsize than the original paper
         #so conv2_x's stride is 1
-        self.conv2_x = self._make_layer(block, 64, num_block[0], 1)
-        self.conv3_x = self._make_layer(block, 128, num_block[1], 2)
-        self.conv4_x = self._make_layer(block, 256, num_block[2], 2)
-        self.conv5_x = self._make_layer(block, 512, num_block[3], 2)
+        self._make_layer(block, 64, num_block[0], 1,'conv2_x')
+        self._make_layer(block, 128, num_block[0], 1,'conv3_x')
+        self._make_layer(block, 256, num_block[0], 1,'conv4_x')
+        self._make_layer(block, 512, num_block[0], 1,'conv5_x')
+        self.layers = nn.Sequential(OrderedDict(layers))
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
-    def _make_layer(self, block, out_channels, num_blocks, stride):
+    def _make_layer(self, block, out_channels, num_blocks, stride,name=''):
         """make resnet layers(by layer i didnt mean this 'layer' was the
         same as a neuron netowork layer, ex. conv layer), one layer may
         contain more than one residual block
@@ -113,25 +114,58 @@ class Model(FModule):
         # could be 1 or 2, other blocks would always be 1
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
-        for stride in strides[:len(strides)//2]:
-            layers.append(('branch_0_branch_1',block(self.in_channels, out_channels, stride)))
+        for i, stride in enumerate(strides[:len(strides)//2]):
+            setattr(self, 'b01_{}_{}'.format(name, i),block(self.in_channels, out_channels, stride))
             self.in_channels = out_channels * block.expansion
         for stride in strides[len(strides)//2:]:
-            layers.append(('branch_1',block(self.in_channels, out_channels, stride)))
+            setattr(self, 'b1_{}_{}'.format(name, i),block(self.in_channels, out_channels, stride))
             self.in_channels = out_channels * block.expansion
-        return nn.Sequential(OrderedDict(layers))
 
+    def forward(self, x, model_type):
+        x = self.conv1(x)
+        x = self.b01_conv2_x_0(x)
+        if model_type ==1:
+            x = self.b1_conv2_x_0(x)
 
-    def forward(self, x):
-        output = self.conv1(x)
-        output = self.conv2_x(output)
-        output = self.conv3_x(output)
-        output = self.conv4_x(output)
-        output = self.conv5_x(output)
-        output = self.avg_pool(output)
-        output = output.view(output.size(0), -1)
-        output = self.fc(output)
-        return output
+        x = self.b01_conv3_x_0(x)
+        if model_type ==1:
+            x = self.b1_conv3_x_0(x)
+
+        x = self.b01_conv4_x_0(x)
+        if model_type ==1:
+            x = self.b1_conv4_x_0(x)
+
+        x = self.b01_conv5_x_0(x)
+        if model_type ==1:
+            x = self.b1_conv5_x_0(x)
+
+        x = self.avg_pool(x)
+        x = output.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+
+    def pred_and_rep(self, x, model_type):
+        x = self.conv1(x)
+        x = self.b01_conv2_x_0(x)
+        if model_type ==1:
+            x = self.b1_conv2_x_0(x)
+
+        x = self.b01_conv3_x_0(x)
+        if model_type ==1:
+            x = self.b1_conv3_x_0(x)
+
+        x = self.b01_conv4_x_0(x)
+        if model_type ==1:
+            x = self.b1_conv4_x_0(x)
+
+        x = self.b01_conv5_x_0(x)
+        if model_type ==1:
+            x = self.b1_conv5_x_0(x)
+
+        x = self.avg_pool(x)
+        e = output.view(x.size(0), -1)
+        o = self.fc(e)
+        return [0], [e]
 
 class Loss(nn.Module):
     def __init__(self):
