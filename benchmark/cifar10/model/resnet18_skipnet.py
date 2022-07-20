@@ -78,8 +78,9 @@ class BottleNeck(nn.Module):
         return nn.ReLU(inplace=True)(self.residual_function(x) + self.shortcut(x))
 
 class Model(FModule):
-    def __init__(self, block=BasicBlock, num_block=[2,2,2,2], num_classes=10):
+    def __init__(self, block=BasicBlock, num_block=[2,2,2,2], num_classes=10, splits=[False, False, False, True]):
         super().__init__()
+        self.splits = splits
         self.in_channels = 64
         self.b01_conv1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, padding=1, bias=False),
@@ -87,15 +88,14 @@ class Model(FModule):
             nn.ReLU(inplace=True))
         #we use a different inputsize than the original paper
         #so conv2_x's stride is 1
-        self._make_layer(block, 64, num_block[0], 1,'conv2_x')
-        self._make_layer(block, 128, num_block[0], 1,'conv3_x')
-        self._make_layer(block, 256, num_block[0], 1,'conv4_x')
-        self._make_layer(block, 512, num_block[0], 1,'conv5_x')
-        self.layers = nn.Sequential(OrderedDict(layers))
+        self._make_layer(block, 64, num_block[0], 1, splits[0], 'conv2_x')
+        self._make_layer(block, 128, num_block[1], 2,splits[1], 'conv3_x')
+        self._make_layer(block, 256, num_block[2], 2,splits[2], 'conv4_x')
+        self._make_layer(block, 512, num_block[3], 2,splits[3], 'conv5_x')
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
-    def _make_layer(self, block, out_channels, num_blocks, stride,name=''):
+    def _make_layer(self, block, out_channels, num_blocks, stride,split=True, name=''):
         """make resnet layers(by layer i didnt mean this 'layer' was the
         same as a neuron netowork layer, ex. conv layer), one layer may
         contain more than one residual block
@@ -113,58 +113,103 @@ class Model(FModule):
         # we have num_block blocks per layer, the first block
         # could be 1 or 2, other blocks would always be 1
         strides = [stride] + [1] * (num_blocks - 1)
-        for i, stride in enumerate(strides[:len(strides)//2]):
-            setattr(self, 'b01_{}_{}'.format(name, i),block(self.in_channels, out_channels, stride))
-            self.in_channels = out_channels * block.expansion
-        for stride in strides[len(strides)//2:]:
-            setattr(self, 'b1_{}_{}'.format(name, i),block(self.in_channels, out_channels, stride))
-            self.in_channels = out_channels * block.expansion
+        if split:
+            for i, stride in enumerate(strides[:len(strides)//2]):
+                setattr(self, 'b01_{}_{}'.format(name, i),block(self.in_channels, out_channels, stride))
+                self.in_channels = out_channels * block.expansion
+            for stride in strides[len(strides)//2:]:
+                setattr(self, 'b1_{}_{}'.format(name, i),block(self.in_channels, out_channels, stride))
+                self.in_channels = out_channels * block.expansion
+        else:
+            for i, stride in enumerate(strides):
+                setattr(self, 'b01_{}_{}'.format(name, i),block(self.in_channels, out_channels, stride))
+                self.in_channels = out_channels * block.expansion
 
-    def forward(self, x, model_type):
+    def forward(self, x, model_type=None):
         x = self.b01_conv1(x)
         x = self.b01_conv2_x_0(x)
-        if model_type ==1:
-            x = self.b1_conv2_x_0(x)
+        if self.splits[0]:
+            if model_type ==1:
+                x = x + self.b1_conv2_x_0(x)
+            else:
+                x = 2 * x
+        else:
+            x = self.b01_conv2_x_1(x)
 
         x = self.b01_conv3_x_0(x)
-        if model_type ==1:
-            x = self.b1_conv3_x_0(x)
+        if self.splits[1]:
+            if model_type ==1:
+                x = x + self.b1_conv3_x_0(x)
+            else:
+                x = 2 * x
+        else:
+            x = self.b01_conv3_x_1(x)
 
         x = self.b01_conv4_x_0(x)
-        if model_type ==1:
-            x = self.b1_conv4_x_0(x)
+        if self.splits[2]:
+            if model_type ==1:
+                x = x + self.b1_conv4_x_0(x)
+            else:
+                x = 2 * x
+        else:
+            x = self.b01_conv4_x_1(x)
 
         x = self.b01_conv5_x_0(x)
-        if model_type ==1:
-            x = self.b1_conv5_x_0(x)
+        if self.splits[3]:
+            if model_type ==1:
+                x = x + self.b1_conv5_x_0(x)
+            else:
+                x = 2 * x
+        else:
+            x = self.b01_conv5_x_1(x)
 
         x = self.avg_pool(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
 
-    def pred_and_rep(self, x, model_type):
+    def pred_and_rep(self, x, model_type=None):
         x = self.b01_conv1(x)
         x = self.b01_conv2_x_0(x)
-        if model_type ==1:
-            x = self.b1_conv2_x_0(x)
+        if self.splits[0]:
+            if model_type ==1:
+                x = x + self.b1_conv2_x_0(x)
+            else:
+                x = 2 * x
+        else:
+            x = self.b01_conv2_x_1(x)
 
         x = self.b01_conv3_x_0(x)
-        if model_type ==1:
-            x = self.b1_conv3_x_0(x)
+        if self.splits[1]:
+            if model_type ==1:
+                x = x + self.b1_conv3_x_0(x)
+            else:
+                x = 2 * x
+        else:
+            x = self.b01_conv3_x_1(x)
 
         x = self.b01_conv4_x_0(x)
-        if model_type ==1:
-            x = self.b1_conv4_x_0(x)
+        if self.splits[2]:
+            if model_type ==1:
+                x = x + self.b1_conv4_x_0(x)
+            else:
+                x = 2 * x
+        else:
+            x = self.b01_conv4_x_1(x)
 
         x = self.b01_conv5_x_0(x)
-        if model_type ==1:
-            x = self.b1_conv5_x_0(x)
+        if self.splits[3]:
+            if model_type ==1:
+                x = x + self.b1_conv5_x_0(x)
+            else:
+                x = 2 * x
+        else:
+            x = self.b01_conv5_x_1(x)
 
         x = self.avg_pool(x)
         e = x.view(x.size(0), -1)
         o = self.fc(e)
-        return [0], [e]
+        return [o], [e]
 
 class Loss(nn.Module):
     def __init__(self):
