@@ -127,7 +127,7 @@ class Server(MPBasicServer):
                 w_avg[key] = 0
                 
             for i in range(1, len(state_dicts)):
-                if 'branch_{}'.format(model_types[i]) in key:
+                if model_types[i] in key:
                     w_avg[key] += weights[i] * state_dicts[i][key]
                     w += weights[i]
             if w > 0:
