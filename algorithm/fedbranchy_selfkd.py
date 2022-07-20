@@ -47,7 +47,7 @@ def KL_divergence(teacher_batch_input, student_batch_input, device):
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
-        self.n_branches = 3
+        self.n_branches = 2
 
     def finish(self, model_path):
         if not Path(model_path).exists():
@@ -84,17 +84,15 @@ class Server(BasicServer):
             model=self.model
         if self.test_data:
             model.eval()
-            losses = [0 for _ in range(self.n_branches)]
-            eval_metrics =[0 for _ in range(self.n_branches)]
+            losses = 0
+            eval_metrics =0
             data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
             for batch_id, batch_data in enumerate(data_loader):
-                for i in range(self.n_branches):
-                    bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device, i)
-                    losses[i] += bmean_loss * len(batch_data[1])
-                    eval_metrics[i] += bmean_eval_metric * len(batch_data[1])
-            for i in range(self.n_branches):
-                eval_metrics[i] /= len(self.test_data)
-                losses[i] /= len(self.test_data)
+                bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device)
+                losses += bmean_loss * len(batch_data[1])
+                eval_metrics += bmean_eval_metric * len(batch_data[1])
+            eval_metrics /= len(self.test_data)
+            losses /= len(self.test_data)
             return eval_metrics, losses
         else: 
             return -1, -1
@@ -147,7 +145,7 @@ class Client(BasicClient):
         self.kd_factor = option['mu']
         self.self_kd = option['selfkd']
         self.weighted = option['weighted']
-        self.model_type = np.random.randint(0,3)
+        self.model_type = np.random.randint(0,2)
         self.T = 3
         self.step=0
     def reply(self, svr_pkg):
@@ -186,7 +184,7 @@ class Client(BasicClient):
         eval_metric = 0
         data_loader = self.calculator.get_data_loader(dataset, batch_size=64)
         for batch_id, batch_data in enumerate(data_loader):
-            bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data,device, self.model_type)
+            bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data,device)
 
             loss += bmean_loss * len(batch_data[1])
             eval_metric += bmean_eval_metric * len(batch_data[1])
