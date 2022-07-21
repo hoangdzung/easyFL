@@ -93,6 +93,13 @@ class Model(FModule):
         o = self.base_fc(e)
         return [o], [e]
 
+    def get_intermediate(self, x):
+        x = self.base_layer0(x)
+        x = self.base_layer11(x)
+        x = self.base_layer21(x)
+
+        return x, self.branch2_layer22(x)
+
 class Loss(nn.Module):
     def __init__(self):
         super(Loss, self).__init__()
