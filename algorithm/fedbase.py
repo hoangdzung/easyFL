@@ -59,6 +59,7 @@ class BasicServer():
         logger.time_end('Total Time Cost')
         # save results as .json file
         logger.save(os.path.join('fedtask', self.option['task'], 'record', flw.output_filename(self.option, self)))
+        torch.save(self.model, os.path.join('fedtask', self.option['task'], 'record', flw.output_filename(self.option, self)).replace('json','pt'))
 
     def iterate(self, t):
         """
