@@ -82,8 +82,9 @@ class Model(FModule):
     def get_intermediate(self, x):
         x = self.base_layer0(x)
         x = self.base_layer11(x)
-        
-        return x, self.branch2_layer12(x)
+        x1 = 2*X
+        x2 = self.branch2_layer12(x)
+        return self.base_layer21(x1), self.base_layer21(x2)
         
 class Loss(nn.Module):
     def __init__(self):

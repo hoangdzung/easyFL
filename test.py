@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import os
 import multiprocessing
+import torch.nn.functional as F 
 
 def main():
     multiprocessing.set_start_method('spawn')
@@ -20,7 +21,7 @@ def main():
     device = torch.device('cuda')
     model = model.to(device)
     model.eval()
-    norm1, norm2, diff = [], [], []
+    norm1, norm2, diff, sim = [], [], [], []
     with torch.no_grad():
         for client in server.clients:
             data_loader = client.calculator.get_data_loader(client.train_data, batch_size=64)
@@ -32,8 +33,9 @@ def main():
                 norm1 += torch.sqrt((emb1**2).sum(-1)).cpu().numpy().tolist()
                 norm2 += torch.sqrt((emb2**2).sum(-1)).cpu().numpy().tolist()
                 diff += torch.sqrt(((emb1 - emb2)**2).sum(-1)).cpu().numpy().tolist()
+                sim += F.cosine_similarity(emb1, emb2).cpu().numpy().tolist()
 
-    print(np.mean(norm1), np.mean(norm2), np.mean(diff))
+    print(np.mean(norm1), np.mean(norm2), np.mean(diff), np.mean(sim))
 
 if __name__ == '__main__':
     main()
