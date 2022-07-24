@@ -7,7 +7,7 @@ from utils.fmodule import FModule
 class Model(FModule):
     def __init__(self):
         super().__init__()
-        self.base_layer0 = nn.Sequential(
+        self.b01_layer0 = nn.Sequential(
             nn.Conv2d(1, 5, kernel_size=3, stride=1, padding=3),
             nn.BatchNorm2d(5),
             nn.ReLU(),
@@ -15,13 +15,13 @@ class Model(FModule):
             nn.MaxPool2d(2),
         )
 
-        self.base_layer11 = nn.Sequential(
+        self.b01_layer1 = nn.Sequential(
             nn.Conv2d(5, 10, kernel_size=3, stride=1, padding=3),
             nn.BatchNorm2d(10),
             nn.ReLU(),
             nn.MaxPool2d(2),
         )
-        self.branch2_layer12 = nn.Sequential(
+        self.b1_layer1 = nn.Sequential(
             nn.Conv2d(10, 10, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(10),
             nn.ReLU(),
@@ -29,62 +29,55 @@ class Model(FModule):
         # self.branch1_bn1 =  nn.BatchNorm2d(10)
         # self.branch2_bn1 =  nn.BatchNorm2d(10)
 
-        self.base_layer21 = nn.Sequential(
+        self.b01_layer2 = nn.Sequential(
             nn.Conv2d(10, 20, kernel_size=3, stride=1, padding=3),
             nn.BatchNorm2d(20),
             nn.ReLU(),
             nn.MaxPool2d(2),
         )
-        # self.branch2_layer22 = nn.Sequential(
-        #     nn.Conv2d(20, 20, kernel_size=3, stride=1, padding=1),
-        #     nn.BatchNorm2d(20),
-        #     nn.ReLU(),
-        # )
-        # self.branch1_bn2 =  nn.BatchNorm2d(20)
-        # self.branch2_bn2 =  nn.BatchNorm2d(20)
 
-        self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
-        self.base_flatten = nn.Flatten()
-        self.base_fc = torch.nn.Linear(20, 10)
+        self.b01_gap = torch.nn.AdaptiveAvgPool2d(1)
+        self.b01_flatten = nn.Flatten()
+        self.b01_fc = torch.nn.Linear(20, 10)
 
     def forward(self, x, n=0):
-        x = self.base_layer0(x)
-        x = self.base_layer11(x)
+        x = self.b01_layer0(x)
+        x = self.b01_layer1(x)
     
         if n!=0:
-            x = x + self.branch2_layer12(x)
+            x = x + self.b1_layer1(x)
         else:
             x *= 2
 
-        x = self.base_layer21(x)
+        x = self.b01_layer2(x)
         
-        x = self.base_gap(x)
-        x = self.base_flatten(x)
-        x = self.base_fc(x)
+        x = self.b01_gap(x)
+        x = self.b01_flatten(x)
+        x = self.b01_fc(x)
         return x
 
     def pred_and_rep(self, x, n):
-        x = self.base_layer0(x)
-        x = self.base_layer11(x)
+        x = self.b01_layer0(x)
+        x = self.b01_layer1(x)
     
         if n!=0:
-            x = x + self.branch2_layer12(x)
+            x = x + self.b1_layer1(x)
         else:
             x *= 2
 
-        x = self.base_layer21(x)
+        x = self.b01_layer2(x)
         
-        x = self.base_gap(x)
-        e = self.base_flatten(x)
-        o = self.base_fc(e)
+        x = self.b01_gap(x)
+        o = self.b01_flatten(x)
+        e = self.b01_fc(o)
         return [o], [e]
 
     def get_intermediate(self, x):
-        x = self.base_layer0(x)
-        x = self.base_layer11(x)
-        x1 = 2*X
-        x2 = self.branch2_layer12(x)
-        return self.base_layer21(x1), self.base_layer21(x2)
+        x = self.b01_layer0(x)
+        x = self.b01_layer1(x)
+        x1 = 2*x
+        x2 = self.b1_layer1(x)+x
+        return self.b01_layer2(x1), self.b01_layer2(x2)
         
 class Loss(nn.Module):
     def __init__(self):
