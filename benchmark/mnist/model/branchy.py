@@ -81,11 +81,11 @@ class Model(FModule):
         if n==0:
             return o, es 
 
-        x = self.b1_layer2(x)
+        x = self.b12_layer2(x)
 
         x2 = self.b012_gap(x)
         e2 = self.b012_flatten(x2)
-        o = self.b12_fc(e2) 
+        o = self.b1_fc(e2) 
         es.append(e2)
         
         if n==1:
