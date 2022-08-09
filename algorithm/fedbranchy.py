@@ -204,7 +204,8 @@ class Client(BasicClient):
         for iter in range(self.epochs):
             for batch_id, batch_data in enumerate(data_loader):
                 model.zero_grad()
-                loss = self.get_loss(model, batch_data, device)
+                loss,kl_loss = self.get_loss(model, batch_data, device)
+                loss = loss + self.kd_factor * kl_loss
                 loss.backward()
                 optimizer.step()
         return
@@ -218,7 +219,10 @@ class Client(BasicClient):
         tdata = self.data_to_device(data, device)    
         outputs_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
         loss = self.lossfunc(outputs_s, tdata[1])
-        return loss
+        kl_loss = 0
+        for r_s in representations_s[:-1]:
+            kl_loss += KL_divergence(representations_s[-1].detach(), r_s, device)
+        return loss, kl_loss
 
     def pack(self, model, loss):
         """
