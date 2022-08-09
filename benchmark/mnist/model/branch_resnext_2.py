@@ -7,7 +7,7 @@ from utils.fmodule import FModule
 class Model(FModule):
     def __init__(self):
         super().__init__()
-        self.b01_layer0 = nn.Sequential(
+        self.b012_layer0 = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
@@ -15,21 +15,21 @@ class Model(FModule):
             nn.MaxPool2d(2),
         )
 
-        self.b01_layer1 = nn.Sequential(
+        self.b012_layer1 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(2),
         )
 
-        self.b01_layer2 = nn.Sequential(
+        self.b012_layer2 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.MaxPool2d(2),
         )
 
-        self.b01_layer21 = nn.Sequential(
+        self.b012_layer21 = nn.Sequential(
             nn.Conv2d(128, 32, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(32),
             nn.ReLU(),
@@ -40,7 +40,17 @@ class Model(FModule):
             nn.BatchNorm2d(128),
         )
 
-        self.b1_layer21 = nn.Sequential(
+        self.b12_layer21 = nn.Sequential(
+            nn.Conv2d(128, 32, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=8),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 128, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(128),
+        )
+        self.b2_layer21 = nn.Sequential(
             nn.Conv2d(128, 32, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(32),
             nn.ReLU(),
@@ -51,18 +61,20 @@ class Model(FModule):
             nn.BatchNorm2d(128),
         )
         self.relu = nn.ReLU()
-        self.b01_gap = torch.nn.AdaptiveAvgPool2d(1)
-        self.b01_flatten = nn.Flatten()
-        self.b01_fc = torch.nn.Linear(128, 10)
+        self.b012_gap = torch.nn.AdaptiveAvgPool2d(1)
+        self.b012_flatten = nn.Flatten()
+        self.b012_fc = torch.nn.Linear(128, 10)
 
     def forward(self, x, n=0):
-        x = self.b01_layer0(x)
-        x = self.b01_layer1(x)
-        x = self.b01_layer2(x)
+        x = self.b012_layer0(x)
+        x = self.b012_layer1(x)
+        x = self.b012_layer2(x)
         if n ==0:
-            x = x+ self.b01_layer21(x) *2
+            x = x+ self.b012_layer21(x) *3
+        elif n==1:
+            x = x +  (self.b012_layer21(x) + self.b12_layer21(x))*1.5
         else:
-            x = x +  self.b01_layer21(x) + self.b1_layer21(x)
+            x = x+ self.b012_layer21(x) + self.b12_layer21(x) + self.b2_layer21(x)
         x = self.relu(x)    
         x = self.b01_gap(x)
         x = self.b01_flatten(x)
@@ -71,14 +83,16 @@ class Model(FModule):
 
 
     def pred_and_rep(self, x, n):
-        x = self.b01_layer0(x)
-        x = self.b01_layer1(x)
-        x = self.b01_layer2(x)
+        x = self.b012_layer0(x)
+        x = self.b012_layer1(x)
+        x = self.b012_layer2(x)
         if n ==0:
-            x = x+ self.b01_layer21(x) *2
+            x = x+ self.b012_layer21(x) *3
+        elif n==1:
+            x = x +  (self.b012_layer21(x) + self.b12_layer21(x))*1.5
         else:
-            x = x +  self.b01_layer21(x) + self.b1_layer21(x)
-        x = self.relu(x)    
+            x = x+ self.b012_layer21(x) + self.b12_layer21(x) + self.b2_layer21(x)
+        x = self.relu(x)
         x = self.b01_gap(x)
         e = self.b01_flatten(x)
         o = self.b01_fc(e)

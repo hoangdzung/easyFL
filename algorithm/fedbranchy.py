@@ -195,31 +195,16 @@ class Client(BasicClient):
         return eval_metric, loss
 
     def train(self, model, device):
-        if self.step%3==0:
-            self.weights = [1, 0, 0]
-        elif self.step%3==1:
-            self.weights = [1,1,0]
-        else:
-            self.weights = [1,1,1]
         model = model.to(device)
         model.train()
-        
-        if self.kd_factor >0:
-            src_model = copy.deepcopy(model).to(device)
-            src_model.freeze_grad()
-        else:
-            src_model = None 
-
+    
         data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, droplast=True)
-        # if self.model_type==0:
-        #     optimizer = self.calculator.get_optimizer(self.optimizer_name, model.branch1(), lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
-        # else:
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+
         for iter in range(self.epochs):
             for batch_id, batch_data in enumerate(data_loader):
                 model.zero_grad()
-                loss, kl_loss = self.get_loss(model, src_model, batch_data, device)
-                loss = loss + kl_loss
+                loss = self.get_loss(model, batch_data, device)
                 loss.backward()
                 optimizer.step()
         return
@@ -229,44 +214,11 @@ class Client(BasicClient):
         return data[0].to(device), data[1].to(device)
 
 
-    def get_loss(self, model, src_model, data, device):
+    def get_loss(self, model, data, device):
         tdata = self.data_to_device(data, device)    
         outputs_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
-        # outputs_t , _ = src_model.pred_and_rep(tdata[0], self.model_type)                    # Teacher
-
-        kl_loss = 0
-        if src_model is not None:
-            outputs_t , representations_t = src_model.pred_and_rep(tdata[0], self.model_type)     
-            kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t[:1], representations_t))
-        if self.self_kd:
-            temp = [nn.KLDivLoss()(F.log_softmax(i/self.T, dim=1),
-                                F.softmax(outputs_s[-1].detach()/self.T, dim=1))*(self.T**2) for i in outputs_s[:-1] ]
-            # print("kl_loss:", temp)
-            kl_loss += sum(temp)
-            # for i, output_s in enumerate(outputs_s):
-            #     if i!=len(outputs_s)-1:
-            #         kl_loss += 0.1*nn.KLDivLoss()(F.log_softmax(output_s/self.T, dim=1),
-            #                     F.softmax(outputs_s[-1].detach()/self.T, dim=1))*(self.T**2)
-                    # kl_loss += 0.1*KL_divergence(representations_s[-1].detach(),representations_s[i] ,device)
-        if type(outputs_s) ==list:
-            weights = [1, 0.5,0.5]
-            # loss = 0
-            # w_loss = 0
-            # for output_s in outputs_s:
-            #     p_loss = self.lossfunc(output_s, tdata[1])
-            #     loss = p_loss.detach().item() * p_loss
-            #     w_loss += p_loss.detach().item()
-            # loss = loss/w_loss
-            if self.weighted:
-                temp = [weight*self.lossfunc(output_s, tdata[1]) for weight, output_s in zip(weights, outputs_s)]
-            else:
-                temp = [self.lossfunc(output_s, tdata[1]) for weight, output_s in zip(weights, outputs_s)]
-            # print("loss:", temp)
-            loss = sum(temp)
-        else:
-            loss = self.lossfunc(outputs_s, tdata[1])
-        # print(loss, kl_loss)
-        return loss, kl_loss
+        loss = self.lossfunc(outputs_s, tdata[1])
+        return loss
 
     def pack(self, model, loss):
         """

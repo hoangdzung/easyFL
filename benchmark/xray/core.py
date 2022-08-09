@@ -52,6 +52,7 @@ class TaskGen(DefaultTaskGen):
         df = df[df['Target'].apply(lambda x: x.strip().isnumeric())]
         labels = df.Target.apply(int).values.tolist()
         label_freq = dict(Counter(labels))
+        import pdb;pdb.set_trace()
         selected_labels = [k for k,v in label_freq.items() if v>=40]
         filtered_image_paths, filtered_labels = [], []
         for label, image_path in zip(labels, df.image_path.values):
