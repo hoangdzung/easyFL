@@ -218,7 +218,10 @@ class Client(BasicClient):
     def get_loss(self, model, data, device):
         tdata = self.data_to_device(data, device)    
         outputs_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
-        loss = self.lossfunc(outputs_s, tdata[1])
+        if type(outputs_s) == list:
+            loss = sum([self.lossfunc(output_s, tdata[1]) for output_s in outputs_s])
+        else:
+            loss = self.lossfunc(outputs_s, tdata[1])
         kl_loss = 0
         for r_s in representations_s[:-1]:
             kl_loss += KL_divergence(representations_s[-1].detach(), r_s, device)
