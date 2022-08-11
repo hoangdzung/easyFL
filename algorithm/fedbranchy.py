@@ -145,8 +145,8 @@ class Client(BasicClient):
         self.kd_factor = option['mu']
         self.self_kd = option['selfkd']
         self.weighted = option['weighted']
-        self.model_type = np.random.randint(0,2)
         self.T = 3
+        self.model_type = np.random.randint(0,self.T)
         self.step=0
     def reply(self, svr_pkg):
         """
