@@ -75,20 +75,20 @@ class Model(FModule):
     
         x1 = self.b012_gap(x)
         e1 = self.b012_flatten(x1)
-        o = self.b0_fc(e1) 
         es.append(e1)
         
         if n==0:
+            o = self.b0_fc(e1) 
             return o, es 
 
         x = self.b12_layer2(x)
 
         x2 = self.b012_gap(x)
         e2 = self.b012_flatten(x2)
-        o = self.b1_fc(e2) 
         es.append(e2)
         
         if n==1:
+            o = self.b1_fc(e2) 
             return o, es 
 
         x = self.b2_layer3(x)
