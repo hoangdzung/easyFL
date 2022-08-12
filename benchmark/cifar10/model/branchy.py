@@ -6,75 +6,98 @@ from utils.fmodule import FModule
 class Model(FModule):
     def __init__(self):
         super().__init__()
-        self.base_layer0 = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=3),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            # nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
-            nn.MaxPool2d(2),
-
-        )
-
-        self.base_layer1 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=3),
+        self.b012_layer0 = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(2),
-
         )
 
-        self.base_layer2 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=3),
+        self.b012_layer1 = nn.Sequential(
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.MaxPool2d(2),
         )
-        self.branch2_layer3 = nn.Sequential(
+
+        self.b12_layer2 = nn.Sequential(
             nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(256),
+            # nn.Dropout2d(0.4),
             nn.ReLU(),
+            nn.MaxPool2d(2),
+
         )
-        self.base_gap = torch.nn.AdaptiveAvgPool2d(1)
-        self.base_flatten = nn.Flatten()
-        self.branch2_fc = torch.nn.Linear(256, 10)
-        self.branch1_fc = torch.nn.Linear(128, 10)
+
+        self.b2_layer3 = nn.Sequential(
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            # nn.Dropout2d(0.7),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+
+        )
+        
+        self.b012_gap = torch.nn.AdaptiveAvgPool2d(1)
+        self.b012_flatten = nn.Flatten()
+        self.b0_fc = torch.nn.Linear(128, 10)
+        self.b1_fc = torch.nn.Linear(256, 10)
+        self.b2_fc = torch.nn.Linear(512, 10)
 
     def forward(self, x, n=0):
-        x = self.base_layer0(x)
-        x = self.base_layer1(x)
-        x = self.base_layer2(x)
+        x = self.b012_layer0(x)
+        x = self.b012_layer1(x)
     
         if n==0:
-            x = self.base_gap(x)
-            x = self.base_flatten(x)
-            x = self.branch1_fc(x) 
-        else:
-            x = self.branch2_layer3(x)
-            x = self.base_gap(x)
-            x = self.base_flatten(x)
-            x = self.branch2_fc(x)
+            x = self.b012_gap(x)
+            x = self.b012_flatten(x)
+            x = self.b0_fc(x) 
+            return x
+
+        x = self.b12_layer2(x)
+        if n==1:
+            x = self.b012_gap(x)
+            x = self.b012_flatten(x)
+            x = self.b1_fc(x) 
+            return x
+
+        x = self.b2_layer3(x)
+        x = self.b012_gap(x)
+        x = self.b012_flatten(x)
+        x = self.b2_fc(x) 
         return x
+             
 
     def pred_and_rep(self, x, n):
-        x = self.base_layer0(x)
-        x = self.base_layer1(x)
-        x = self.base_layer2(x)
+        os, es =[], []
+        x = self.b012_layer0(x)
+        x = self.b012_layer1(x)
     
-        if n==0:
-            e = self.base_flatten(x)
-            x = self.base_gap(x)
-            x = self.base_flatten(x)
-            o = self.branch1_fc(x) 
-            return o, [e]
-        else:
-            e1 = self.base_flatten(x)
-            x = self.branch2_layer3(x)
-            e2 = self.base_flatten(x)
-            x = self.base_gap(x)
-            x = self.base_flatten(x)
-            o = self.branch2_fc(x)
-        return o, [e1, e2]
+        x1 = self.b012_gap(x)
+        e1 = self.b012_flatten(x1)
+        es.append(e1)
         
+        if n==0:
+            o = self.b0_fc(e1) 
+            return o, es 
+
+        x = self.b12_layer2(x)
+
+        x2 = self.b012_gap(x)
+        e2 = self.b012_flatten(x2)
+        es.append(e2)
+        
+        if n==1:
+            o = self.b1_fc(e2) 
+            return o, es 
+
+        x = self.b2_layer3(x)
+
+        x3 = self.b012_gap(x)
+        e3 = self.b012_flatten(x3)
+        o = self.b2_fc(e3) 
+        es.append(e3)
+        return o, es 
 
 class Loss(nn.Module):
     def __init__(self):
