@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader,Dataset
 import requests, zipfile, io, os
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from collections import Counter
+from collections import Counter, defaultdict
 
 class CustomImageDataset(Dataset):
     def __init__(self, labels, img_paths, transform=None, target_transform=None):
@@ -48,7 +48,7 @@ class TaskGen(DefaultTaskGen):
         z = zipfile.ZipFile(filepath,'r')
         z.extractall(self.rawdata_path)
 
-        path, y ={}, {}
+        path, y = defaultdict(list)
         for split in ['train','val', 'test']:
             for label, label_text in enumerate(['NORMAL', 'PNEUMONIA']):
                 split_label_dir = os.path.join(self.rawdata_path, 'chest_xray', split, label_text)
