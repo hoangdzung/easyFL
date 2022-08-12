@@ -30,6 +30,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 ssl._create_default_https_context = ssl._create_unverified_context
 import importlib
+import pickle 
 
 def set_random_seed(seed=0):
     """Set random seed"""
@@ -352,8 +353,10 @@ class DefaultTaskGen(BasicTaskGen):
                     'x':[self.train_data['x'][did] for did in valid_cidxs[cid]], 'y':[self.train_data['y'][did] for did in valid_cidxs[cid]]
                 }
             }
-        with open(os.path.join(self.taskpath, 'data.json'), 'w') as outf:
-            ujson.dump(feddata, outf)
+        # with open(os.path.join(self.taskpath, 'data.json'), 'w') as outf:
+        #     ujson.dump(feddata, outf)
+        with open(os.path.join(self.taskpath, 'data.pickle'), 'wb') as outf:
+            pickle.dump(feddata, outf)
         return
 
     def IDXData_to_json(self, train_cidxs, valid_cidxs):
@@ -474,8 +477,15 @@ class XYTaskReader(BasicTaskReader):
         super(XYTaskReader, self).__init__(taskpath)
 
     def read_data(self):
-        with open(os.path.join(self.taskpath, 'data.json'), 'r') as inf:
-            feddata = ujson.load(inf)
+        if os.path.isfile(os.path.join(self.taskpath, 'data.json')):
+            with open(os.path.join(self.taskpath, 'data.json'), 'r') as inf:
+                feddata = ujson.load(inf)
+        elif os.path.isfile(os.path.join(self.taskpath, 'data.pickle')):
+            with open(os.path.join(self.taskpath, 'data.pickle'), 'rb') as inf:
+                feddata = pickle.load(inf)
+        else:
+            raise FileNotFoundError
+                 
         test_data = XYDataset(feddata['dtest']['x'], feddata['dtest']['y'])
         train_datas = [XYDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
         valid_datas = [XYDataset(feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']) for name in feddata['client_names']]
