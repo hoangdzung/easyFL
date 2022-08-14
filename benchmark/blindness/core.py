@@ -34,32 +34,35 @@ class CustomImageDataset(Dataset):
 
 class TaskGen(DefaultTaskGen):
     def __init__(self, dist_id, num_clients = 1, num_groups=3, skewness = 0.5,seed=0):
-        super(TaskGen, self).__init__(benchmark='chestxray',
+        super(TaskGen, self).__init__(benchmark='blindness',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       num_groups=num_groups,
                                       skewness=skewness,
-                                      rawdata_path='./benchmark/chestxray/data',
+                                      rawdata_path='./benchmark/blindness/data',
                                       seed=seed
                                       )
         self.num_classes = 10
         self.save_data = self.XYData_to_json
 
     def load_data(self):
-        filepath = os.path.join(self.rawdata_path,'archive.zip')
+        filepath = os.path.join(self.rawdata_path,'aptos2019-blindness-detection.zip')
         assert os.path.isfile(filepath), "Go to https://www.kaggle.com/datasets/paultimothymooney/chest-xray-pneumonia to download data and place it inside data folder"
         z = zipfile.ZipFile(filepath,'r')
         z.extractall(self.rawdata_path)
 
-        path, y = defaultdict(list), defaultdict(list)
-        for split in ['train','val', 'test']:
-            for label, label_text in enumerate(['NORMAL', 'PNEUMONIA']):
-                split_label_dir = os.path.join(self.rawdata_path, 'chest_xray', split, label_text)
-                for f in os.listdir(split_label_dir):
-                    path[split].append(os.path.join(split_label_dir,f))
-                    y[split].append(label)
+        label_to_path_train = defaultdict(list)
+        train_df = pd.read_csv(os.path.join(self.rawdata_path,'train.csv'))
+        for row in train_df.itertuples():
+            label_to_path_train[row.diagnosis].append(os.path.join(self.rawdata_path, 'train_images', row.id_code+'.png' ))
 
-        self.train_data = CustomImageDataset(y['train']+y['val'], path['train']+path['val'], transform=transforms.Compose([transforms.Resize([224,224 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
+        path_train, y_train = [], []
+        for label, dup_rate in enumerate([1,5,2,10,6]):
+            for i in range(dup_rate)
+                path_train += label_to_path_train[label]
+                y_train = [label] * len(label_to_path_train[label])
+
+        self.train_data = CustomImageDataset(y_train, path_train, transform=transforms.Compose([transforms.Resize([224,224 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
         self.test_data = CustomImageDataset(y['test'], path['test'], transform=transforms.Compose([transforms.Resize([224,224 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
 
     def convert_data_for_saving(self):

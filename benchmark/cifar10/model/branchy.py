@@ -44,7 +44,7 @@ class Model(FModule):
         self.b1_fc = torch.nn.Linear(256, 10)
         self.b2_fc = torch.nn.Linear(512, 10)
 
-    def forward(self, x, n=0):
+    def forward(self, x, n=3):
         x = self.b012_layer0(x)
         x = self.b012_layer1(x)
     

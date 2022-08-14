@@ -80,18 +80,20 @@ class Model(FModule):
     def __init__(self, block=BasicBlock, num_block=[2,2,2,2], num_classes=10):
         super().__init__()
         self.in_channels = 64
-        self.conv1 = nn.Sequential(
+        self.b012_conv1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True))
         #we use a different inputsize than the original paper
         #so conv2_x's stride is 1
-        self.conv2_x = self._make_layer(block, 64, num_block[0], 1)
-        self.conv3_x = self._make_layer(block, 128, num_block[1], 2)
-        # self.conv4_x = self._make_layer(block, 256, num_block[2], 2)
-        # self.conv5_x = self._make_layer(block, 512, num_block[3], 2)
+        self.b012_conv2_x = self._make_layer(block, 64, num_block[0], 1)
+        self.b012_conv3_x = self._make_layer(block, 128, num_block[1], 2)
+        self.b12_conv4_x = self._make_layer(block, 256, num_block[2], 2)
+        self.b2_conv5_x = self._make_layer(block, 512, num_block[3], 2)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(128 * block.expansion, num_classes)
+        self.b0_fc = nn.Linear(128 * block.expansion, num_classes)
+        self.b1_fc = nn.Linear(256 * block.expansion, num_classes)
+        self.b2_fc = nn.Linear(512 * block.expansion, num_classes)
 
     def _make_layer(self, block, out_channels, num_blocks, stride):
         """make resnet layers(by layer i didnt mean this 'layer' was the
@@ -118,16 +120,58 @@ class Model(FModule):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
-        output = self.conv1(x)
-        output = self.conv2_x(output)
-        output = self.conv3_x(output)
-        # output = self.conv4_x(output)
-        # output = self.conv5_x(output)
-        output = self.avg_pool(output)
-        output = output.view(output.size(0), -1)
-        output = self.fc(output)
-        return output
+    def forward(self, x, n=3):
+        x = self.b012_conv1(x)
+        x = self.b012_conv2_x(x)
+        x = self.b012_conv3_x(x)
+        if n==0:
+            x = self.avg_pool(x)
+            x = x.view(x.size(0), -1)
+            x = self.b0_fc(x) 
+            return x
+
+        x = self.b12_conv4_x(x)
+        if n==1:
+            x = self.avg_pool(x)
+            x = x.view(x.size(0), -1)
+            x = self.b1_fc(x) 
+            return x
+
+        x = self.b2_conv5_x(x)
+        x = self.avg_pool(x)
+        x = x.view(x.size(0), -1)
+        x = self.b2_fc(x)
+        return x
+
+    def pred_and_rep(self, x, n=3):
+        es =[]
+
+        x = self.b012_conv1(x)
+        x = self.b012_conv2_x(x)
+        x = self.b012_conv3_x(x)
+        e1 = self.avg_pool(x)
+        e1 = e1.view(e1.size(0), -1)
+        es.append(e1)
+
+        if n==0:
+            o = self.b0_fc(e1) 
+            return o, es
+
+        x = self.b12_conv4_x(x)
+        e2 = self.avg_pool(x)
+        e2 = e2.view(e2.size(0), -1)
+        es.append(e2)
+
+        if n==1:
+            o = self.b1_fc(e2) 
+            return o, es
+
+        x = self.b2_conv5_x(x)
+        e3 = self.avg_pool(x)
+        e3 = e3.view(e3.size(0), -1)
+        es.append(e3)
+        o = self.b2_fc(e3)
+        return o, es
 
 class Loss(nn.Module):
     def __init__(self):
