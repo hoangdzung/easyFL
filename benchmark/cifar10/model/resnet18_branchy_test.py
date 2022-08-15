@@ -91,9 +91,9 @@ class Model(FModule):
         self.b12_conv4_x = self._make_layer(block, 256, num_block[2], 2)
         self.b2_conv5_x = self._make_layer(block, 512, num_block[3], 2)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.b012_fc = nn.Linear(128 * block.expansion, num_classes)
-        self.b012_fc = nn.Linear(256 * block.expansion, num_classes)
-        self.b012_fc = nn.Linear(512 * block.expansion, num_classes)
+        self.b012_fc_1 = nn.Linear(128 * block.expansion, num_classes)
+        self.b012_fc_2 = nn.Linear(256 * block.expansion, num_classes)
+        self.b012_fc_3 = nn.Linear(512 * block.expansion, num_classes)
 
     def _make_layer(self, block, out_channels, num_blocks, stride):
         """make resnet layers(by layer i didnt mean this 'layer' was the
@@ -127,20 +127,20 @@ class Model(FModule):
         if n==0:
             x = self.avg_pool(x)
             x = x.view(x.size(0), -1)
-            x = self.b012_fc(x) 
+            x = self.b012_fc_1(x) 
             return x
 
         x = self.b12_conv4_x(x)
         if n==1:
             x = self.avg_pool(x)
             x = x.view(x.size(0), -1)
-            x = self.b012_fc(x) 
+            x = self.b012_fc_2(x) 
             return x
 
         x = self.b2_conv5_x(x)
         x = self.avg_pool(x)
         x = x.view(x.size(0), -1)
-        x = self.b012_fc(x)
+        x = self.b012_fc_3(x)
         return x
 
     def pred_and_rep(self, x, n=3):
@@ -152,7 +152,7 @@ class Model(FModule):
         e1 = self.avg_pool(x)
         e1 = e1.view(e1.size(0), -1)
         es.append(e1)
-        o = self.b0_fc(e1) 
+        o = self.b012_fc_1(e1) 
         os.append(o)    
         if n==0:
             return os, es
@@ -161,7 +161,7 @@ class Model(FModule):
         e2 = self.avg_pool(x)
         e2 = e2.view(e2.size(0), -1)
         es.append(e2)
-        o = self.b1_fc(e2) 
+        o = self.b013_fc_2(e2) 
         os.append(o)    
 
         if n==1:
@@ -171,7 +171,7 @@ class Model(FModule):
         e3 = self.avg_pool(x)
         e3 = e3.view(e3.size(0), -1)
         es.append(e3)
-        o = self.b2_fc(e3)
+        o = self.b022_fc_3(e3)
         os.append(o)    
 
         return os, es
