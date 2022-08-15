@@ -1,11 +1,11 @@
 from torch import nn
-class VGG(nn.Module):
+class Model(nn.Module):
     def __init__(self, num_classes=10):
-        super(VGG, self).__init__()
+        super(Model, self).__init__()
         
         # Block 1
         self.b012_layer1 = nn.Sequential(
-            nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU())
         self.b012_maxpool_1 = nn.MaxPool2d(kernel_size = 2, stride = 2)
