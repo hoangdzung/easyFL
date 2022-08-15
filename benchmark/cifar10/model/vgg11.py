@@ -1,5 +1,7 @@
 from torch import nn
-class Model(nn.Module):
+from utils.fmodule import FModule
+
+class Model(FModule):
     def __init__(self, num_classes=10):
         super(Model, self).__init__()
         
