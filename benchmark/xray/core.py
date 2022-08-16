@@ -39,7 +39,7 @@ class TaskGen(DefaultTaskGen):
                                       rawdata_path='./benchmark/xray/data',
                                       seed=seed
                                       )
-        self.num_classes = 10
+        self.num_classes = 4
         self.save_data = self.XYData_to_json
 
     def load_data(self):
