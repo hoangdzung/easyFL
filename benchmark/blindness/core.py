@@ -23,8 +23,8 @@ class CustomImageDataset(Dataset):
     def __getitem__(self, idx):
         img_path = self.img_paths[idx]
         image = read_image(img_path)
-        if image.shape[0]!=1:
-            image = rgb_to_grayscale(image)
+        # if image.shape[0]!=1:
+        #     image = rgb_to_grayscale(image)
         label = self.img_labels[idx]
         if self.transform:
             image = self.transform(image)
@@ -42,7 +42,7 @@ class TaskGen(DefaultTaskGen):
                                       rawdata_path='./benchmark/blindness/data',
                                       seed=seed
                                       )
-        self.num_classes = 10
+        self.num_classes = 5
         self.save_data = self.XYData_to_json
 
     def load_data(self):
@@ -53,17 +53,16 @@ class TaskGen(DefaultTaskGen):
 
         label_to_path_train = defaultdict(list)
         train_df = pd.read_csv(os.path.join(self.rawdata_path,'train.csv'))
-        for row in train_df.itertuples():
-            label_to_path_train[row.diagnosis].append(os.path.join(self.rawdata_path, 'train_images', row.id_code+'.png' ))
 
-        path_train, y_train = [], []
-        for label, dup_rate in enumerate([1,5,2,10,6]):
-            for i in range(dup_rate)
-                path_train += label_to_path_train[label]
-                y_train = [label] * len(label_to_path_train[label])
+        image_paths = [os.path.join(self.rawdata_path, 'train_images', id_code+'.png' ) for id_code in train_df.id_code]
+        labels = train_df.diagnosis.values
 
-        self.train_data = CustomImageDataset(y_train, path_train, transform=transforms.Compose([transforms.Resize([224,224 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
-        self.test_data = CustomImageDataset(y['test'], path['test'], transform=transforms.Compose([transforms.Resize([224,224 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
+        path_train, path_test, y_train, y_test = train_test_split(image_paths, labels,
+                                                            stratify=labels, 
+                                                            test_size=0.25,
+                                                            random_state=self.seed)
+        self.train_data = CustomImageDataset(y_train, path_train, transform=transforms.Compose([transforms.Resize([96,96 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
+        self.test_data = CustomImageDataset(y_test, path_test, transform=transforms.Compose([transforms.Resize([96,96 ]), transforms.ConvertImageDtype(torch.float), transforms.Normalize((0.1307,), (0.3081,))]))
 
     def convert_data_for_saving(self):
         train_x = [self.train_data[did][0].tolist() for did in range(len(self.train_data))]
