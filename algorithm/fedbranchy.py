@@ -141,7 +141,10 @@ class Server(BasicServer):
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
-        self.lossfunc = nn.CrossEntropyLoss()
+        if 'loss_weight' in option:
+            self.lossfunc = nn.CrossEntropyLoss(option['loss_weight'])
+        else:
+            self.lossfunc = nn.CrossEntropyLoss()
         self.kd_factor = option['mu']
         self.self_kd = option['selfkd']
         self.weighted = option['weighted']

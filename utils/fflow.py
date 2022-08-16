@@ -89,6 +89,10 @@ def initialize(option):
     # dynamical initializing the configuration with the benchmark
     # get benchmark dataset name
     bmk_name = option['task'][:option['task'].find('cnum')-1].lower()
+    if bmk_name == 'xray':
+        option['loss_weight'] = [0.39039966, 0.26026644, 0.04313808, 0.30619581]
+    elif bmk_name == 'blindness':
+        option['loss_weight'] = [0.04318505, 0.21067302, 0.07802705, 0.40388092, 0.26423396]
     assert 'dist' in option['task']
     for param in option['task'].split('_'):
         if 'dist' in param:
