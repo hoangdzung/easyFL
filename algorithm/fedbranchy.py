@@ -201,13 +201,19 @@ class Client(BasicClient):
         model = model.to(device)
         model.train()
     
+        if self.kd_factor >0 and not self.self_kd:
+            src_model = copy.deepcopy(model).to(device)
+            src_model.freeze_grad()
+        else:
+            src_model = None 
+            
         data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, droplast=True)
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
 
         for iter in range(self.epochs):
             for batch_id, batch_data in enumerate(data_loader):
                 model.zero_grad()
-                loss,kl_loss = self.get_loss(model, batch_data, device)
+                loss,kl_loss = self.get_loss(model, batch_data, device, src_model)
                 loss = loss + self.kd_factor * kl_loss
                 loss.backward()
                 optimizer.step()
@@ -218,7 +224,7 @@ class Client(BasicClient):
         return data[0].to(device), data[1].to(device)
 
 
-    def get_loss(self, model, data, device):
+    def get_loss(self, model, data, device, src_model=None):
         tdata = self.data_to_device(data, device)    
         outputs_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
         if type(outputs_s) == list:
@@ -226,8 +232,14 @@ class Client(BasicClient):
         else:
             loss = self.lossfunc(outputs_s, tdata[1])
         kl_loss = 0
-        for r_s in representations_s[:-1]:
-            kl_loss += KL_divergence(representations_s[-1].detach(), r_s, device)
+        if self.kd_factor > 0:
+            if self.self_kd:
+                for r_s in representations_s[:-1]:
+                    kl_loss += KL_divergence(representations_s[-1].detach(), r_s, device)
+            else:
+                outputs_t , representations_t = src_model.pred_and_rep(tdata[0], self.model_type)     
+                kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_s))
+
         return loss, kl_loss
 
     def pack(self, model, loss):
