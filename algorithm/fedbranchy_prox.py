@@ -3,6 +3,7 @@ from pathlib import Path
 from .mp_fedbase import MPBasicServer, MPBasicClient
 from .fedbase import BasicServer, BasicClient
 import torch.nn as nn
+from torch.nn.utils import weight_norm
 import numpy as np
 import torch.nn.functional as F
 import torch
@@ -107,16 +108,16 @@ class Server(BasicServer):
         for key in w_avg.keys():
             branches = [int(i) for i in key.split('_')[0][1:]]
             if model_types[0] in branches:
-                w = factors[model_types[0]]*weights[0]
-                w_avg[key] *= weights[0]*factors[model_types[0]]
+                w = factors[model_types[0]]*weight_norm(weights[0], dim=None)
+                w_avg[key] *= weight_norm(weights[0], dim=None)*factors[model_types[0]]
             else:
                 w = 0
                 w_avg[key] = 0
                 
             for i in range(1, len(state_dicts)):
                 if model_types[i] in branches:
-                    w_avg[key] += factors[model_types[i]]*weights[i] * state_dicts[i][key]
-                    w += weights[i]*factors[model_types[i]]
+                    w_avg[key] += factors[model_types[i]]*weight_norm(weights[i], dim=None) * state_dicts[i][key]
+                    w += weight_norm(weights[i], dim=None)*factors[model_types[i]]
             if w > 0:
                 w_avg[key] = w_avg[key]/ w
             else:
