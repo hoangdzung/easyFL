@@ -131,7 +131,7 @@ class Model(FModule):
         es.append(e1)
 
         if n==0:
-            e = torch.hstack(es)
+            e = es[0]
             o = self.b0_fc(e) 
             return o, es
 
@@ -141,16 +141,18 @@ class Model(FModule):
         es.append(e2)
 
         if n==1:
-            e = torch.hstack(es)
-            o = self.b0_fc(e)             
+            e = torch.hstack([es[0], es[0]]) + es[1]
+            e = e/2
+            o = self.b1_fc(e)             
             return o, es
 
         x = self.b2_conv5_x(x)
         e3 = self.avg_pool(x)
         e3 = e3.view(e3.size(0), -1)
         es.append(e3)
-        e = torch.hstack(es)
-        o = self.b0_fc(e)         
+        e = torch.hstack([es[0], es[0],es[0],es[0]]) + torch.hstack([es[1], es[1]])+ es[2]
+        e = e/3
+        o = self.b2_fc(e)         
         return o
 
 
@@ -177,7 +179,7 @@ class Model(FModule):
         if n==1:
             e = torch.hstack([es[0], es[0]]) + es[1]
             e = e/2
-            o = self.b0_fc(e)             
+            o = self.b1_fc(e)             
             return o, es
 
         x = self.b2_conv5_x(x)
@@ -186,7 +188,7 @@ class Model(FModule):
         es.append(e3)
         e = torch.hstack([es[0], es[0],es[0],es[0]]) + torch.hstack([es[1], es[1]])+ es[2]
         e = e/3
-        o = self.b0_fc(e)         
+        o = self.b2_fc(e)         
         return o, es
 
 class Loss(nn.Module):
