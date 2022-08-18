@@ -142,7 +142,7 @@ class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         if 'loss_weight' in option:
-            self.lossfunc = nn.CrossEntropyLoss(option['loss_weight'])
+            self.lossfunc = nn.CrossEntropyLoss(torch.tensor(option['loss_weight']).cuda())
         else:
             self.lossfunc = nn.CrossEntropyLoss()
         self.kd_factor = option['mu']

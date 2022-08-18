@@ -164,6 +164,8 @@ class Logger:
         self.temp = "{:<30s}{:.4f}"
         self.time_costs = []
         self.time_buf={}
+        self.best_val_acc = 0
+        self.best_test_acc = 0
 
     def check_if_log(self, round, eval_interval=-1):
         """For evaluating every 'eval_interval' rounds, check whether to log at 'round'."""
