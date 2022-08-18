@@ -60,11 +60,6 @@ class BasicServer():
         logger.time_end('Total Time Cost')
         # save results as .json file
         logger.save(os.path.join('fedtask', self.option['task'], 'record', flw.output_filename(self.option, self)))
-        self.model = self.get_model()
-        test_metric, _ = self.test()
-        print("Overall accuracy: ", test_metric)
-
-    def save_model(self):
         torch.save(self.model, os.path.join('fedtask', self.option['task'], 'record', flw.output_filename(self.option, self).replace('json','pt')))
 
     def get_model(self):
