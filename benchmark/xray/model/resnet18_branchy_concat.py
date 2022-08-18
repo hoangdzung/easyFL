@@ -92,8 +92,8 @@ class Model(FModule):
         self.b2_conv5_x = self._make_layer(block, 512, num_block[3], 2)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.b0_fc = nn.Linear(128 * block.expansion, num_classes)
-        self.b1_fc = nn.Linear((256+128) * block.expansion, num_classes)
-        self.b2_fc = nn.Linear((512+256+128) * block.expansion, num_classes)
+        self.b1_fc = nn.Linear(256 * block.expansion, num_classes)
+        self.b2_fc = nn.Linear(512 * block.expansion, num_classes)
 
     def _make_layer(self, block, out_channels, num_blocks, stride):
         """make resnet layers(by layer i didnt mean this 'layer' was the
@@ -165,7 +165,7 @@ class Model(FModule):
         es.append(e1)
 
         if n==0:
-            e = torch.hstack(es)
+            e = es[0]
             o = self.b0_fc(e) 
             return o, es
 
@@ -175,7 +175,8 @@ class Model(FModule):
         es.append(e2)
 
         if n==1:
-            e = torch.hstack(es)
+            e = torch.hstack([es[0], es[0]]) + es[1]
+            e = e/2
             o = self.b0_fc(e)             
             return o, es
 
@@ -183,7 +184,8 @@ class Model(FModule):
         e3 = self.avg_pool(x)
         e3 = e3.view(e3.size(0), -1)
         es.append(e3)
-        e = torch.hstack(es)
+        e = torch.hstack([es[0], es[0],es[0],es[0]]) + torch.hstack([es[1], es[1]])+ es[2]
+        e = e/3
         o = self.b0_fc(e)         
         return o, es
 
