@@ -91,13 +91,19 @@ class Model(FModule):
         self.b12_conv4_x = self._make_layer(block, 256, num_block[2], 2)
         self.b2_conv5_x = self._make_layer(block, 512, num_block[3], 2)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.b012_fc = nn.Linear(128 * block.expansion, num_classes)
-        self.b1_fc = nn.Sequential(
-            nn.Linear(256 * block.expansion, 128 * block.expansion),
+        
+        self.b0_conv = nn.Sequential(
+            nn.Conv2d(128 * block.expansion, 256 * block.expansion, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(256 * block.expansion),
             nn.ReLU(inplace=True))
-        self.b2_fc = nn.Sequential(
-            nn.Linear(512 * block.expansion, 128 * block.expansion),
+        self.b01_conv = nn.Sequential(
+            nn.Conv2d(256 * block.expansion, 512 * block.expansion, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(512 * block.expansion),
             nn.ReLU(inplace=True))
+        
+        self.b012_fc = nn.Linear(512 * block.expansion, num_classes)
+#         self.b12_fc = nn.Linear(256 * block.expansion, num_classes)
+#         self.b2_fc = nn.Linear(512 * block.expansion, num_classes)
 
     def _make_layer(self, block, out_channels, num_blocks, stride):
         """make resnet layers(by layer i didnt mean this 'layer' was the
@@ -128,56 +134,71 @@ class Model(FModule):
         x = self.b012_conv1(x)
         x = self.b012_conv2_x(x)
         x = self.b012_conv3_x(x)
-        e1 = self.avg_pool(x)
-        e1 = e1.view(e1.size(0), -1)
 
         if n==0:
+            e1 = self.b0_conv(x)
+            e1 = self.b01_conv(e1)
+            e1 = self.avg_pool(e1)
+            e1 = e1.view(e1.size(0), -1)
             o = self.b012_fc(e1) 
             return o
 
         x = self.b12_conv4_x(x)
-        e2 = self.avg_pool(x)
-        e2 = e2.view(e2.size(0), -1)
 
         if n==1:
-            o = self.b012_fc(self.b1_fc(e2)) 
+            e2 = self.b01_conv(x)
+            e2 = self.avg_pool(e2)
+            e2 = e2.view(e2.size(0), -1)
+            o = self.b012_fc(e2) 
             return o
 
         x = self.b2_conv5_x(x)
         e3 = self.avg_pool(x)
         e3 = e3.view(e3.size(0), -1)
-        o = self.b012_fc(self.b2_fc(e3)) 
+        o = self.b012_fc(e3)
         return o
 
     def pred_and_rep(self, x, n=3):
-        es =[]
+        os, es =[], []
 
         x = self.b012_conv1(x)
         x = self.b012_conv2_x(x)
         x = self.b012_conv3_x(x)
-        e1 = self.avg_pool(x)
+
+        e1 = self.b0_conv(x)
+        e1 = self.b01_conv(e1)
+        e1 = self.avg_pool(e1)
         e1 = e1.view(e1.size(0), -1)
         es.append(e1)
-
+#         os.append(o1)
+        
         if n==0:
-            o = self.b012_fc(e1) 
-            return o, es
+            o1 = self.b012_fc(e1) 
+            return o1, es
+#             return os, es 
 
         x = self.b12_conv4_x(x)
-        e2 = self.avg_pool(x)
+        e2 = self.b01_conv(x)
+        e2 = self.avg_pool(e2)
+        e2 = self.avg_pool(e2)
         e2 = e2.view(e2.size(0), -1)
         es.append(e2)
+        o2 = self.b012_fc(e2) 
+        os.append(o2)
 
         if n==1:
-            o = self.b012_fc(self.b1_fc(e2)) 
-            return o, es
+            o2 = self.b012_fc(e2) 
+#             return o2, es 
+            return o2, es 
 
         x = self.b2_conv5_x(x)
         e3 = self.avg_pool(x)
         e3 = e3.view(e3.size(0), -1)
         es.append(e3)
-        o = self.b012_fc(self.b2_fc(e3)) 
-        return o, es
+        o3 = self.b012_fc(e3)
+#         os.append(o3)
+
+        return o3, es 
 
 class Loss(nn.Module):
     def __init__(self):
