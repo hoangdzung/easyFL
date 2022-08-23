@@ -66,10 +66,10 @@ class Server(BasicServer):
             return
         device0 = torch.device(f"cuda")
         models = [i.to(device0) for i in models]
-        self.model = self.aggregate(models, p = [1.0 for cid in self.selected_clients])
+#         self.model = self.aggregate(models, p = [1.0 for cid in self.selected_clients])
 
-        # state_dict = self.average_weights(models, model_types, [self.client_vols[cid] for cid in self.selected_clients])
-        # self.model.load_state_dict(state_dict)
+        state_dict = self.average_weights(models, model_types, [self.client_vols[cid] for cid in self.selected_clients])
+        self.model.load_state_dict(state_dict)
         return
 
     def test(self, model=None, device=torch.device('cuda')):
@@ -101,7 +101,8 @@ class Server(BasicServer):
         """
         Returns the average of the weights.
         """
-        factors = {0:5, 1:2, 2:1}
+        factors = {0:1, 1:5, 2:10}
+#         factors = {0:10, 1:5, 2:1}
         state_dicts = [model.state_dict() for model in models]
         w_avg = copy.deepcopy(state_dicts[0])
         for key in w_avg.keys():
@@ -115,6 +116,7 @@ class Server(BasicServer):
                 
             for i in range(1, len(state_dicts)):
                 if model_types[i] in branches:
+#                     print(key, model_types[i], torch.abs(state_dicts[i][key]*1.0).mean(), torch.abs(state_dicts[i][key]*1.0).std())
                     w_avg[key] += factors[model_types[i]]*weights[i] * state_dicts[i][key]
                     w += weights[i]*factors[model_types[i]]
             if w > 0:
@@ -214,6 +216,7 @@ class Client(BasicClient):
             for batch_id, batch_data in enumerate(data_loader):
                 model.zero_grad()
                 loss,kl_loss = self.get_loss(model, batch_data, device, src_model)
+#                 print(loss, kl_loss)
                 loss = loss + self.kd_factor * kl_loss
                 loss.backward()
                 optimizer.step()
@@ -228,17 +231,28 @@ class Client(BasicClient):
         tdata = self.data_to_device(data, device)    
         outputs_s, representations_s  = model.pred_and_rep(tdata[0], self.model_type)                  # Student
         if type(outputs_s) == list:
-            loss = sum([self.lossfunc(output_s, tdata[1]) for output_s in outputs_s])
+            loss = sum([w*self.lossfunc(output_s, tdata[1]) for w,output_s in zip([10,5,1], outputs_s)])/sum([10,5,1][:len(outputs_s)])
         else:
             loss = self.lossfunc(outputs_s, tdata[1])
         kl_loss = 0
         if self.kd_factor > 0:
             if self.self_kd:
-                for r_s in representations_s[:-1]:
-                    kl_loss += KL_divergence(representations_s[-1].detach(), r_s, device)
+#                 for r_s in representations_s[:-1]:
+#                     kl_loss += KL_divergence(representations_s[-1].detach(), r_s, device)
+#                 for o_s in outputs_s[:-1]:
+                kl_loss = 10**2 * nn.KLDivLoss()(F.log_softmax(outputs_s[-1]/10, dim=1),
+                            F.softmax(outputs_s[0]/10, dim=1)) 
             else:
                 outputs_t , representations_t = src_model.pred_and_rep(tdata[0], self.model_type)     
-                kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_s))
+#                 kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_s))
+#                 kl_loss += sum(KL_divergence(representations_t[0], rs, device) for rs in representations_s)
+#                 kl_loss += sum(((rt-rs)**2).mean() for rt, rs in zip(representations_t, representations_s))
+                if type(outputs_s) == list:
+                    kl_loss = 10**2 * nn.KLDivLoss()(F.log_softmax(outputs_s[-1]/10, dim=1),
+                                        F.softmax(outputs_t[-1]/10, dim=1)) 
+                else:
+                    kl_loss = 10**2 * nn.KLDivLoss()(F.log_softmax(outputs_s/10, dim=1),
+                                            F.softmax(outputs_t/10, dim=1)) 
 
         return loss, kl_loss
 
