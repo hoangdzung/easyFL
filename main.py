@@ -19,18 +19,13 @@ class MyLogger(flw.Logger):
                 "client_accs":{},
                 "mean_valid_accs":[],
             }
-        if "mp_" in server.name:
-            test_metric, test_loss = server.test(device=torch.device('cuda:0'))
-        else:
-            test_metric, test_loss = server.test()
         
         valid_metrics, valid_losses = server.test_on_clients(self.current_round, 'valid')
         # train_metrics, train_losses = server.test_on_clients(self.current_round, 'train')
         # self.output['train_losses'].append(1.0*sum([ck * closs for ck, closs in zip(server.client_vols, train_losses)])/server.data_vol)
         self.output['mean_valid_accs'].append(1.0*sum([ck * acc for ck, acc in zip(server.client_vols, valid_metrics)])/server.data_vol)
         self.output['valid_accs'].append(valid_metrics)
-        self.output['test_accs'].append(test_metric)
-        self.output['test_losses'].append(test_loss)
+        # self.output['test_losses'].append(test_loss)
         self.output['mean_curve'].append(np.mean(valid_metrics,0).tolist()) 
         self.output['var_curve'].append(np.std(valid_metrics,0).tolist()) 
         
@@ -45,8 +40,13 @@ class MyLogger(flw.Logger):
         print("Std of Client Accuracy:", self.output['var_curve'][-1])
         if self.output['mean_valid_accs'][-1] >= self.best_val_acc:
             self.best_val_acc = self.output['mean_valid_accs'][-1] 
-            self.best_test_acc = self.output['test_accs'][-1]
+            if "mp_" in server.name:
+                self.best_test_acc, _ = server.test(device=torch.device('cuda:0'))
+            else:
+                self.best_test_acc, _ = server.test()
+
         print("Overall Testing Accuracy:", self.best_test_acc)
+        self.output['test_accs'].append(self.best_test_acc)
         
 logger = MyLogger()
 
