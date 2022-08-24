@@ -165,6 +165,7 @@ class Logger:
         self.time_costs = []
         self.time_buf={}
         self.best_val_acc = 0
+        self.best_test_loss = 1e9
         self.best_test_acc = 0
 
     def check_if_log(self, round, eval_interval=-1):

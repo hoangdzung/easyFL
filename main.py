@@ -33,20 +33,22 @@ class MyLogger(flw.Logger):
             self.output['client_accs'][server.clients[cid].name]=[self.output['valid_accs'][i][cid] for i in range(len(self.output['valid_accs']))]
     
         # print("Training Loss:", self.output['train_losses'][-1])    
-        print("Testing Loss:", self.output['test_losses'][-1])
-        print("Testing Accuracy:", self.output['test_accs'][-1]) 
+        # print("Testing Loss:", self.output['test_losses'][-1])
+        # print("Testing Accuracy:", self.output['test_accs'][-1]) 
         print("Validating Accuracy:", self.output['mean_valid_accs'][-1])
         print("Mean of Client Accuracy:", self.output['mean_curve'][-1])
         print("Std of Client Accuracy:", self.output['var_curve'][-1])
         if self.output['mean_valid_accs'][-1] >= self.best_val_acc:
             self.best_val_acc = self.output['mean_valid_accs'][-1] 
             if "mp_" in server.name:
-                self.best_test_acc, _ = server.test(device=torch.device('cuda:0'))
+                self.best_test_acc, self.best_test_loss = server.test(device=torch.device('cuda:0'))
             else:
-                self.best_test_acc, _ = server.test()
+                self.best_test_acc, self.best_test_loss = server.test()
 
         print("Overall Testing Accuracy:", self.best_test_acc)
+        print("Overall Testing Loss:", self.best_test_loss)
         self.output['test_accs'].append(self.best_test_acc)
+        self.output['train_losses'].append(self.best_test_loss)
         
 logger = MyLogger()
 
