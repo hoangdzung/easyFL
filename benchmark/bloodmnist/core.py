@@ -3,7 +3,7 @@ from benchmark.toolkits import ClassifyCalculator, DefaultTaskGen, XYTaskReader
 import medmnist
 from medmnist.dataset import *
 
-class WrapPathMNIST(OrganSMNIST):
+class WrapPathMNIST(BloodMNIST):
     def __init__(self, **kwargs):
         super(WrapPathMNIST, self).__init__(**kwargs)
 
@@ -13,12 +13,12 @@ class WrapPathMNIST(OrganSMNIST):
 
 class TaskGen(DefaultTaskGen):
     def __init__(self, dist_id, num_clients = 1, num_groups=3, skewness = 0.5):
-        super(TaskGen, self).__init__(benchmark='organsmnist',
+        super(TaskGen, self).__init__(benchmark='bloodmnist',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       num_groups=num_groups,
                                       skewness=skewness,
-                                      rawdata_path='./benchmark/organsmnist/data',
+                                      rawdata_path='./benchmark/bloodmnist/data',
                                       )
         self.num_classes = 11
         self.save_data = self.XYData_to_json
