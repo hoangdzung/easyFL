@@ -45,6 +45,11 @@ class BasicBlock(nn.Module):
                 nn.Conv2d(in_channels, out_channels * BasicBlock.expansion, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(out_channels * BasicBlock.expansion)
             )
+
+    def forward(self, x):
+        return nn.ReLU(inplace=True)(self.residual_function(x) + self.shortcut(x))
+
+class BottleNeck(nn.Module):
     """Residual block for resnet over 50 layers
 
     """
@@ -72,6 +77,7 @@ class BasicBlock(nn.Module):
 
     def forward(self, x):
         return nn.ReLU(inplace=True)(self.residual_function(x) + self.shortcut(x))
+
 
 class Model(FModule):
     def __init__(self, block=BasicBlock, num_block=[1,2,2,2], num_classes=params[BENCHMARK]['n_labels']):
