@@ -4,8 +4,8 @@ import medmnist
 from medmnist.dataset import *
 from benchmark.medmnist_params import params
 
-BENCHMARK = 'bloodmnist'
-class WrapPathMNIST(BloodMNIST):
+BENCHMARK = 'organcmnist'
+class WrapPathMNIST(OrganCMNIST):
     def __init__(self, **kwargs):
         super(WrapPathMNIST, self).__init__(**kwargs)
 

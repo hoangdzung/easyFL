@@ -1,8 +1,10 @@
 from torchvision import datasets, transforms
 from benchmark.toolkits import ClassifyCalculator, DefaultTaskGen, XYTaskReader
 import medmnist
-from medmnist.dataset import PathMNIST
+from medmnist.dataset import *
+from benchmark.medmnist_params import params
 
+BENCHMARK = 'pathmnist'
 class WrapPathMNIST(PathMNIST):
     def __init__(self, **kwargs):
         super(WrapPathMNIST, self).__init__(**kwargs)
@@ -13,14 +15,14 @@ class WrapPathMNIST(PathMNIST):
 
 class TaskGen(DefaultTaskGen):
     def __init__(self, dist_id, num_clients = 1, num_groups=3, skewness = 0.5):
-        super(TaskGen, self).__init__(benchmark='pathmnist',
+        super(TaskGen, self).__init__(benchmark=BENCHMARK,
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       num_groups=num_groups,
                                       skewness=skewness,
-                                      rawdata_path='./benchmark/pathmnist/data',
+                                      rawdata_path='./benchmark/'+BENCHMARK+'/data',
                                       )
-        self.num_classes = 9
+        self.num_classes = params[BENCHMARK]['n_labels']
         self.save_data = self.XYData_to_json
    
 
