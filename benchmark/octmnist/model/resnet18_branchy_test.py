@@ -135,7 +135,7 @@ class Model(FModule):
         if n==0:
             x = self.avg_pool(x)
             x = x.view(x.size(0), -1)
-            x = self.b0123_fc(x) 
+            x = self.b012_fc(x) 
             return x
 
         x = self.b12_conv3_x(x)
@@ -143,14 +143,14 @@ class Model(FModule):
             x = self.avg_pool(x)
             x = x.view(x.size(0), -1)
             x = self.b1_fc(x) 
-            x = self.b0123_fc(x) 
+            x = self.b012_fc(x) 
             return x
 
         x = self.b2_conv4_x(x)
         x = self.avg_pool(x)
         x = x.view(x.size(0), -1)
         x = self.b2_fc(x)
-        x = self.b0123_fc(x) 
+        x = self.b012_fc(x) 
         return x
 
     def pred_and_rep(self, x, n=3):
@@ -164,7 +164,7 @@ class Model(FModule):
         es.append(e1)
 
         if n==0:
-            o = self.b0123_fc(e1) 
+            o = self.b012_fc(e1) 
             return o, es
 
         x = self.b12_conv3_x(x)
@@ -174,7 +174,7 @@ class Model(FModule):
         es.append(e2)
 
         if n==1:
-            o = self.b0123_fc(e2) 
+            o = self.b012_fc(e2) 
             return o, es
 
         x = self.b2_conv4_x(x)
@@ -182,7 +182,7 @@ class Model(FModule):
         e3 = e3.view(e3.size(0), -1)
         e3 = self.b2_fc(e3)
         es.append(e3)
-        o = self.b0123_fc(e3)
+        o = self.b012_fc(e3)
         return o, es
 
 class Loss(nn.Module):
