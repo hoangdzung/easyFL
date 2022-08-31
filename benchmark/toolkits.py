@@ -71,6 +71,8 @@ class BasicTaskGen:
         self.benchmark = benchmark
         self.rootpath = './fedtask'
         self.rawdata_path = rawdata_path
+        if not os.path.isdir(self.rawdata_path):
+            os.makedirs(self.rawdata_path)
         self.dist_id = dist_id
         self.dist_name = self._TYPE_DIST[dist_id]
         self.skewness = 0 if dist_id==0 else skewness
