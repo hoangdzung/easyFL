@@ -157,14 +157,14 @@ class DefaultTaskGen(BasicTaskGen):
         # partition data and hold-out for each local dataset
         print('-----------------------------------------------------')
         print('Partitioning data...')
-        local_datas = self.partition()
-        train_cidxs, valid_cidxs = self.local_holdout(local_datas, rate=0.8, shuffle=True)
+        train_cidxs = self.partition()
+        # train_cidxs, valid_cidxs = self.local_holdout(local_datas, rate=0.8, shuffle=True)
         print('Done.')
         # save task infomation as .json file and the federated dataset
         print('-----------------------------------------------------')
         print('Saving data...')
         self.save_info()
-        self.save_data(train_cidxs, valid_cidxs)
+        self.save_data(train_cidxs)
         print('Done.')
         return
 
@@ -335,13 +335,14 @@ class DefaultTaskGen(BasicTaskGen):
         """Convert self.train_data and self.test_data to list that can be stored as .json file and the converted dataset={'x':[], 'y':[]}"""
         pass
 
-    def XYData_to_json(self, train_cidxs, valid_cidxs):
+    def XYData_to_json(self, train_cidxs, valid_cidxs=None):
         self.convert_data_for_saving()
         # save federated dataset
         feddata = {
             'store': 'XY',
             'client_names': self.cnames,
-            'dtest': self.test_data
+            'dtest': self.test_data,
+            'dvalid': self.val_data
 
         }
         for cid in range(self.num_clients):
@@ -349,9 +350,9 @@ class DefaultTaskGen(BasicTaskGen):
                 'dtrain':{
                     'x':[self.train_data['x'][did] for did in train_cidxs[cid]], 'y':[self.train_data['y'][did] for did in train_cidxs[cid]]
                 },
-                'dvalid':{
-                    'x':[self.train_data['x'][did] for did in valid_cidxs[cid]], 'y':[self.train_data['y'][did] for did in valid_cidxs[cid]]
-                }
+                # 'dvalid':{
+                #     'x':[self.train_data['x'][did] for did in valid_cidxs[cid]], 'y':[self.train_data['y'][did] for did in valid_cidxs[cid]]
+                # }
             }
         # with open(os.path.join(self.taskpath, 'data.json'), 'w') as outf:
         #     ujson.dump(feddata, outf)
@@ -487,8 +488,9 @@ class XYTaskReader(BasicTaskReader):
             raise FileNotFoundError
                  
         test_data = XYDataset(feddata['dtest']['x'], feddata['dtest']['y'])
+        valid_datas = XYDataset(feddata['dvalid']['x'], feddata['dvalid']['y'])
         train_datas = [XYDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
-        valid_datas = [XYDataset(feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']) for name in feddata['client_names']]
+        # valid_datas = [XYDataset(feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']) for name in feddata['client_names']]
         return train_datas, valid_datas, test_data, feddata['client_names']
 
 class IDXTaskReader(BasicTaskReader):

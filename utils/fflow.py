@@ -118,7 +118,7 @@ def initialize(option):
 
     # get task dataset
     task_reader = getattr(importlib.import_module(bmk_core_path), 'TaskReader')(taskpath=os.path.join('fedtask', option['task']))
-    train_datas, valid_datas, test_data, client_names = task_reader.read_data()
+    train_datas, valid_data, test_data, client_names = task_reader.read_data()
     num_clients = len(client_names)
     print("done")
 
@@ -126,13 +126,13 @@ def initialize(option):
     print('init clients...', end='')
     client_path = '%s.%s' % ('algorithm', option['algorithm'])
     Client=getattr(importlib.import_module(client_path), 'Client')
-    clients = [Client(option, name = client_names[cid], train_data = train_datas[cid], valid_data = valid_datas[cid]) for cid in range(num_clients)]
+    clients = [Client(option, name = client_names[cid], train_data = train_datas[cid], valid_data = None) for cid in range(num_clients)]
     print('done')
 
     # init server
     print("init server...", end='')
     server_path = '%s.%s' % ('algorithm', option['algorithm'])
-    server = getattr(importlib.import_module(server_path), 'Server')(option, utils.fmodule.Model().to(utils.fmodule.device), clients, test_data = test_data)
+    server = getattr(importlib.import_module(server_path), 'Server')(option, utils.fmodule.Model().to(utils.fmodule.device), clients, test_data = test_data, valid_data=valid_data)
     print('done')
     return server
 

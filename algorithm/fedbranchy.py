@@ -45,8 +45,8 @@ def KL_divergence(teacher_batch_input, student_batch_input, device):
 
 
 class Server(BasicServer):
-    def __init__(self, option, model, clients, test_data = None):
-        super(Server, self).__init__(option, model, clients, test_data)
+    def __init__(self, option, model, clients, valid_data = None, test_data = None):
+        super(Server, self).__init__(option, model, clients, valid_data, test_data)
         self.n_branches = 2
 
     def finish(self, model_path):
@@ -72,7 +72,7 @@ class Server(BasicServer):
         self.model.load_state_dict(state_dict)
         return
 
-    def test(self, model=None, device=torch.device('cuda')):
+    def test(self, model=None, split='test', device=torch.device('cuda')):
         """
         Evaluate the model on the test dataset owned by the server.
         :param
@@ -80,23 +80,28 @@ class Server(BasicServer):
         :return:
             the metric and loss of the model on the test data
         """
+
+        if split=='test' and self.test_data:
+            data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
+        elif split =='val' and self.val_data:
+            data_loader = self.calculator.get_data_loader(self.val_data, batch_size=64)
+        else:
+            return -1, -1
+        
         if model==None: 
             model=self.model
-        if self.test_data:
-            model.eval()
-            losses = 0
-            eval_metrics =0
-            data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
-            for batch_id, batch_data in enumerate(data_loader):
-                bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device)
-                losses += bmean_loss * len(batch_data[1])
-                eval_metrics += bmean_eval_metric * len(batch_data[1])
-            eval_metrics /= len(self.test_data)
-            losses /= len(self.test_data)
-            return eval_metrics, losses
-        else: 
-            return -1, -1
-            
+        model.eval()
+        losses = 0
+        eval_metrics =0
+        data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
+        for batch_id, batch_data in enumerate(data_loader):
+            bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device)
+            losses += bmean_loss * len(batch_data[1])
+            eval_metrics += bmean_eval_metric * len(batch_data[1])
+        eval_metrics /= len(self.test_data)
+        losses /= len(self.test_data)
+        return eval_metrics, losses
+
     def average_weights(self, models, model_types, weights):
         """
         Returns the average of the weights.
