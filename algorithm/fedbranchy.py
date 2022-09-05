@@ -47,7 +47,8 @@ def KL_divergence(teacher_batch_input, student_batch_input, device):
 class Server(BasicServer):
     def __init__(self, option, model, clients, valid_data = None, test_data = None):
         super(Server, self).__init__(option, model, clients, valid_data, test_data)
-        self.n_branches = 2
+        self.paras_name = ['sample_weights', 'agg_weights']
+        self.factors = {i:j for i, j in enumerate(option['agg_weights'])}
 
     def finish(self, model_path):
         if not Path(model_path).exists():
@@ -106,15 +107,14 @@ class Server(BasicServer):
         """
         Returns the average of the weights.
         """
-        factors = {0:1, 1:5, 2:10}
-#         factors = {0:10, 1:5, 2:1}
+
         state_dicts = [model.state_dict() for model in models]
         w_avg = copy.deepcopy(state_dicts[0])
         for key in w_avg.keys():
             branches = [int(i) for i in key.split('_')[0][1:]]
             if model_types[0] in branches:
-                w = factors[model_types[0]]*weights[0]
-                w_avg[key] *= weights[0]*factors[model_types[0]]
+                w = self.factors[model_types[0]]*weights[0]
+                w_avg[key] *= weights[0]*self.factors[model_types[0]]
             else:
                 w = 0
                 w_avg[key] = 0
@@ -122,8 +122,8 @@ class Server(BasicServer):
             for i in range(1, len(state_dicts)):
                 if model_types[i] in branches:
 #                     print(key, model_types[i], torch.abs(state_dicts[i][key]*1.0).mean(), torch.abs(state_dicts[i][key]*1.0).std())
-                    w_avg[key] += factors[model_types[i]]*weights[i] * state_dicts[i][key]
-                    w += weights[i]*factors[model_types[i]]
+                    w_avg[key] += self.factors[model_types[i]]*weights[i] * state_dicts[i][key]
+                    w += weights[i]*self.factors[model_types[i]]
             if w > 0:
                 w_avg[key] = w_avg[key]/ w
             else:
@@ -155,9 +155,10 @@ class Client(BasicClient):
         self.kd_factor = option['mu']
         self.self_kd = option['selfkd']
         self.weighted = option['weighted']
+        self.sample_weights = np.array(option['sample_weights'])/sum(option['sample_weights'])
         self.T = 3
-        self.model_type = np.random.randint(0,self.T)
-        self.step=0
+        self.model_type = np.random.choice(3, p=self.sample_weights)
+        self.step = 0
     def reply(self, svr_pkg):
         """
         Reply to server with the transmitted package.
