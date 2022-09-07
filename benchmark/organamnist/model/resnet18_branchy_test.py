@@ -156,7 +156,7 @@ class Model(FModule):
         return x
 
     def pred_and_rep(self, x, n=3):
-        
+
         x = self.b012_conv1(x)
         x = self.b012_conv2_x(x)
         # x = self.b012_conv3_x(x)
@@ -177,8 +177,8 @@ class Model(FModule):
             return o, [e]
 
         x = self.b2_conv4_x(x)
-        e = self.avg_pool(e)
-        e = e3.view(e.size(0), -1)
+        e = self.avg_pool(x)
+        e = e.view(e.size(0), -1)
         x = self.b2_fc(x)
         o = self.b012_fc(e)
         return o, [e]
