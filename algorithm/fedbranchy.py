@@ -47,7 +47,7 @@ def KL_divergence(teacher_batch_input, student_batch_input, device):
 class Server(BasicServer):
     def __init__(self, option, model, clients, valid_data = None, test_data = None):
         super(Server, self).__init__(option, model, clients, valid_data, test_data)
-        self.paras_name = ['sample_weights', 'agg_weights']
+        self.paras_name = ['sample_weights', 'agg_weights', 'temp']
         self.factors = {i:j for i, j in enumerate(option['agg_weights'])}
 
     def finish(self, model_path):
@@ -156,7 +156,7 @@ class Client(BasicClient):
         self.self_kd = option['selfkd']
         self.weighted = option['weighted']
         self.sample_weights = np.array(option['sample_weights'])/sum(option['sample_weights'])
-        self.T = 3
+        self.temp = option['temp']
         self.model_type = np.random.choice(3, p=self.sample_weights)
         self.step = 0
     def reply(self, svr_pkg):
@@ -243,22 +243,23 @@ class Client(BasicClient):
         kl_loss = 0
         if self.kd_factor > 0:
             if self.self_kd:
-#                 for r_s in representations_s[:-1]:
-#                     kl_loss += KL_divergence(representations_s[-1].detach(), r_s, device)
-#                 for o_s in outputs_s[:-1]:
-                kl_loss = 10**2 * nn.KLDivLoss()(F.log_softmax(outputs_s[-1]/10, dim=1),
-                            F.softmax(outputs_s[0]/10, dim=1)) 
+                if self.temp <= 0:
+                    for r_s in representations_s[:-1]:
+                        kl_loss += KL_divergence(representations_s[-1].detach(), r_s, device)
+                elif if type(outputs_s) == list:
+                    for output in outputs_s[:-1]
+                        kl_loss += self.temp**2 * nn.KLDivLoss()(F.log_softmax(output/self.temp, dim=1),
+                                    F.softmax(outputs_s[-1]/self.temp, dim=1)) 
             else:
                 outputs_t , representations_t = src_model.pred_and_rep(tdata[0], self.model_type)     
-#                 kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_s))
-#                 kl_loss += sum(KL_divergence(representations_t[0], rs, device) for rs in representations_s)
-#                 kl_loss += sum(((rt-rs)**2).mean() for rt, rs in zip(representations_t, representations_s))
-                if type(outputs_s) == list:
-                    kl_loss = 10**2 * nn.KLDivLoss()(F.log_softmax(outputs_s[-1]/10, dim=1),
-                                        F.softmax(outputs_t[-1]/10, dim=1)) 
+                if self.temp <= 0:
+                    kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_s))
+                elif type(outputs_s) == list:
+                    kl_loss = self.temp**2 * nn.KLDivLoss()(F.log_softmax(outputs_s[-1]/self.temp, dim=1),
+                                        F.softmax(outputs_t[-1]/self.temp, dim=1)) 
                 else:
-                    kl_loss = 10**2 * nn.KLDivLoss()(F.log_softmax(outputs_s/10, dim=1),
-                                            F.softmax(outputs_t/10, dim=1)) 
+                    kl_loss = self.temp**2 * nn.KLDivLoss()(F.log_softmax(outputs_s/self.temp, dim=1),
+                                            F.softmax(outputs_t/self.temp, dim=1)) 
 
         return loss, kl_loss
 

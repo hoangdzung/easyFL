@@ -65,6 +65,7 @@ def read_option():
     parser.add_argument('--gamma', help='gamma in FedFA', type=float, default='0')
     parser.add_argument('--mu', help='mu in fedprox or in fedbranchy', type=float, default='0.1')
     parser.add_argument('--selfkd', help='use selfkd or not in mp_fedbranchy_selfkd', action='store_true')
+    parser.add_argument('--temp', type=float, help='temp for regular kl, default 5, set negative for not used', default=5)
     parser.add_argument('--weighted', help='weighted branches', action='store_true')
     
     # server gpu
