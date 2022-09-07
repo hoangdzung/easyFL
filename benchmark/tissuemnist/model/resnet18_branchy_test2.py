@@ -93,17 +93,18 @@ class Model(FModule):
         self.b2_conv4_x = self._make_layer(block, 128, num_block[2], 2)
         # self.b2_conv5_x = self._make_layer(block, 512, num_block[3], 2)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.b012_fc = nn.Linear(32 * block.expansion, num_classes)
-        self.b1_fc = nn.Sequential(
-            nn.Linear(64 * block.expansion, 32 * block.expansion),
-            nn.BatchNorm1d( 32 * block.expansion),
+        self.b0_conv = nn.Sequential(
+            nn.Conv2d(32*block.expansion, 64*block.expansion, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(64*block.expansion),
             nn.ReLU(inplace=True)
-        ) 
-        self.b2_fc = nn.Sequential(
-            nn.Linear(128 * block.expansion, 32 * block.expansion),
-            nn.BatchNorm1d( 32 * block.expansion),
+        )
+        self.b01_conv = nn.Sequential(
+            nn.Conv2d(64*block.expansion, 128*block.expansion, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(128*block.expansion),
             nn.ReLU(inplace=True)
-        ) 
+        )
+        
+        self.b012_fc = nn.Linear(128 * block.expansion, num_classes)
 
     def _make_layer(self, block, out_channels, num_blocks, stride):
         """make resnet layers(by layer i didnt mean this 'layer' was the
@@ -131,30 +132,34 @@ class Model(FModule):
         return nn.Sequential(*layers)
 
     def forward(self, x, n=3):
+
         x = self.b012_conv1(x)
         x = self.b012_conv2_x(x)
         # x = self.b012_conv3_x(x)
+
         if n==0:
-            x = self.avg_pool(x)
-            x = x.view(x.size(0), -1)
-            x = self.b012_fc(x) 
-            return x
+            x = self.b0_conv(x)
+            x = self.b01_conv(x)
+            e = self.avg_pool(x)
+            e = e.view(e.size(0), -1)
+            o = self.b012_fc(e) 
+            return o
 
         x = self.b12_conv3_x(x)
+
         if n==1:
-            x = self.avg_pool(x)
-            x = x.view(x.size(0), -1)
-            x = self.b1_fc(x) 
-            x = self.b012_fc(x) 
-            return x
+            x = self.b01_conv(x)
+            e = self.avg_pool(x)
+            e = e.view(e.size(0), -1)
+            o = self.b012_fc(e) 
+            return o
 
         x = self.b2_conv4_x(x)
-        x = self.avg_pool(x)
-        x = x.view(x.size(0), -1)
-        x = self.b2_fc(x)
-        x = self.b012_fc(x) 
-        return x
-
+        e = self.avg_pool(x)
+        e = e.view(e.size(0), -1)
+        o = self.b012_fc(e)
+        return o
+        
     def pred_and_rep(self, x, n=3):
         es =[]
 
@@ -163,6 +168,8 @@ class Model(FModule):
         # x = self.b012_conv3_x(x)
 
         if n==0:
+            x = self.b0_conv(x)
+            x = self.b01_conv(x)
             e = self.avg_pool(x)
             e = e.view(e.size(0), -1)
             o = self.b012_fc(e) 
@@ -171,16 +178,15 @@ class Model(FModule):
         x = self.b12_conv3_x(x)
 
         if n==1:
+            x = self.b01_conv(x)
             e = self.avg_pool(x)
             e = e.view(e.size(0), -1)
-            e = self.b1_fc(e)
             o = self.b012_fc(e) 
             return o, [e]
 
         x = self.b2_conv4_x(x)
-        x = self.b2_fc(x)
-        e = self.avg_pool(e)
-        e = e3.view(e.size(0), -1)
+        e = self.avg_pool(x)
+        e = e.view(e.size(0), -1)
         o = self.b012_fc(e)
         return o, [e]
 

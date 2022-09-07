@@ -96,11 +96,13 @@ class Model(FModule):
         self.b012_fc = nn.Linear(32 * block.expansion, num_classes)
         self.b1_fc = nn.Sequential(
             nn.Linear(64 * block.expansion, 32 * block.expansion),
-            nn.BatchNorm1d( 32 * block.expansion)
+            nn.BatchNorm1d( 32 * block.expansion),
+            nn.ReLU(inplace=True)
         ) 
         self.b2_fc = nn.Sequential(
             nn.Linear(128 * block.expansion, 32 * block.expansion),
-            nn.BatchNorm1d( 32 * block.expansion)
+            nn.BatchNorm1d( 32 * block.expansion),
+            nn.ReLU(inplace=True)
         ) 
 
     def _make_layer(self, block, out_channels, num_blocks, stride):
@@ -159,31 +161,28 @@ class Model(FModule):
         x = self.b012_conv1(x)
         x = self.b012_conv2_x(x)
         # x = self.b012_conv3_x(x)
-        e1 = self.avg_pool(x)
-        e1 = e1.view(e1.size(0), -1)
-        es.append(e1)
 
         if n==0:
-            o = self.b012_fc(e1) 
-            return o, es
+            e = self.avg_pool(x)
+            e = e.view(e.size(0), -1)
+            o = self.b012_fc(e) 
+            return o, [e]
 
         x = self.b12_conv3_x(x)
-        e2 = self.avg_pool(x)
-        e2 = e2.view(e2.size(0), -1)
-        e2 = self.b1_fc(e2)
-        es.append(e2)
 
         if n==1:
-            o = self.b012_fc(e2) 
-            return o, es
+            e = self.avg_pool(x)
+            e = e.view(e.size(0), -1)
+            e = self.b1_fc(e)
+            o = self.b012_fc(e) 
+            return o, [e]
 
         x = self.b2_conv4_x(x)
-        e3 = self.avg_pool(x)
-        e3 = e3.view(e3.size(0), -1)
-        e3 = self.b2_fc(e3)
-        es.append(e3)
-        o = self.b012_fc(e3)
-        return o, es
+        x = self.b2_fc(x)
+        e = self.avg_pool(e)
+        e = e3.view(e.size(0), -1)
+        o = self.b012_fc(e)
+        return o, [e]
 
 class Loss(nn.Module):
     def __init__(self):
