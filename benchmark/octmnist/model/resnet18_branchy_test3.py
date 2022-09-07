@@ -101,7 +101,7 @@ class Model(FModule):
         ) 
         self.b2_fc = nn.Sequential(
             nn.Linear(128 * block.expansion, 32 * block.expansion),
-            nn.BatchNorm1d( 32 * block.expansion),
+            nn.BatchNorm2d( 32 * block.expansion),
             nn.ReLU(inplace=True)
         ) 
 

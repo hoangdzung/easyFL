@@ -246,8 +246,8 @@ class Client(BasicClient):
                 if self.temp <= 0:
                     for r_s in representations_s[:-1]:
                         kl_loss += KL_divergence(representations_s[-1].detach(), r_s, device)
-                elif if type(outputs_s) == list:
-                    for output in outputs_s[:-1]
+                elif type(outputs_s) == list:
+                    for output in outputs_s[:-1]:
                         kl_loss += self.temp**2 * nn.KLDivLoss()(F.log_softmax(output/self.temp, dim=1),
                                     F.softmax(outputs_s[-1]/self.temp, dim=1)) 
             else:
