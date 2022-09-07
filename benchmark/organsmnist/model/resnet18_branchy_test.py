@@ -179,7 +179,7 @@ class Model(FModule):
         x = self.b2_conv4_x(x)
         e = self.avg_pool(x)
         e = e.view(e.size(0), -1)
-        x = self.b2_fc(x)
+        e = self.b2_fc(e)
         o = self.b012_fc(e)
         return o, [e]
 
