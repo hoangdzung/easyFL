@@ -67,6 +67,7 @@ def read_option():
     parser.add_argument('--selfkd', help='use selfkd or not in mp_fedbranchy_selfkd', action='store_true')
     parser.add_argument('--temp', type=float, help='temp for regular kl, default 5, set negative for not used', default=5)
     parser.add_argument('--weighted', help='weighted branches', action='store_true')
+    parser.add_argument('--model_type', help='used for fedavg hete', type=int, default=2)
     
     # server gpu
     parser.add_argument('--server_gpu_id', help='server process on this gpu', type=int, default=0)
