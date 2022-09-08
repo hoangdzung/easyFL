@@ -194,7 +194,7 @@ class Model(FModule):
         e = self.avg_pool(x)
         e = e.view(e.size(0), -1)
         o = self.b012_fc(e)
-            return o, [e1,e2,e]
+        return o, [e1,e2,e]
 
 class Loss(nn.Module):
     def __init__(self):
