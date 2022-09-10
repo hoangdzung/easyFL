@@ -164,7 +164,7 @@ class Model(FModule):
         if n==0:
             e = self.avg_pool(x)
             e = e.view(e.size(0), -1)
-            o = self.b0_fc(e) 
+            e = self.b0_fc(e) 
             o = self.b012_fc(e) 
             return o, [e]
 
