@@ -22,7 +22,6 @@ class Server(BasicServer):
             active_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_active() and self.clients[cid].model_type==self.model_type]
 
         # sample clients
-        active_clients = [c]
         if self.sample_option == 'active':
             # select all the active clients without sampling
             selected_clients = active_clients

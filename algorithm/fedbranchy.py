@@ -67,7 +67,7 @@ class Server(BasicServer):
             return
         device0 = torch.device(f"cuda")
         models = [i.to(device0) for i in models]
-#         self.model = self.aggregate(models, p = [1.0 for cid in self.selected_clients])
+        # self.model = self.aggregate(models, p = [1.0 for cid in self.selected_clients])
 
         state_dict = self.average_weights(models, model_types, [self.client_vols[cid] for cid in self.selected_clients])
         self.model.load_state_dict(state_dict)
