@@ -60,7 +60,7 @@ def read_option():
     parser.add_argument('--epsilon', help='ε in fedmgda+', type=float, default='0.0')
     parser.add_argument('--eta', help='global learning rate in fedmgda+', type=float, default='1.0')
     parser.add_argument('--tau', help='the length of recent history gradients to be contained in FedFAvg', type=int, default=0)
-    parser.add_argument('--alpha', help='proportion of clients keeping original direction in FedFV/alpha in fedFA', type=float, default='0.0')
+    parser.add_argument('--alpha', help='proportion of clients keeping original direction in FedFV/alpha in fedFA', type=float, default='0.1')
     parser.add_argument('--beta', help='beta in FedFA',type=float, default='1.0')
     parser.add_argument('--gamma', help='gamma in FedFA', type=float, default='0')
     parser.add_argument('--mu', help='mu in fedprox or in fedbranchy', type=float, default='0.1')
@@ -113,6 +113,7 @@ def initialize(option):
     # get model of that benchmark
     bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
     utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
+    utils.fmodule.base_dim = option['base_dim']
 
     # get preprocess core of that benchmark 
     bmk_core_path = '.'.join(['benchmark', bmk_name, 'core'])

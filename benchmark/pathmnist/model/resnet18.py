@@ -80,7 +80,7 @@ class BottleNeck(nn.Module):
 
 
 class Model(FModule):
-    def __init__(self, block=BasicBlock, num_block=[1,2,2,2], num_classes=params[BENCHMARK]['n_labels'], base_dim=32):
+    def __init__(self, block=BasicBlock, num_block=[1,2,2,2], num_classes=params[BENCHMARK]['n_labels'], base_dim=16):
         super().__init__()
         self.in_channels = base_dim
         self.conv1 = nn.Sequential(
