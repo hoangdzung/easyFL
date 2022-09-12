@@ -79,29 +79,29 @@ class BottleNeck(nn.Module):
         return nn.ReLU(inplace=True)(self.residual_function(x) + self.shortcut(x))
 
 class Model(FModule):
-    def __init__(self, block=BasicBlock, num_block=[1,2,2,2], num_classes=params[BENCHMARK]['n_labels']):
+    def __init__(self, block=BasicBlock, num_block=[1,2,2,2], num_classes=params[BENCHMARK]['n_labels'], base_dim=32):
         super().__init__()
-        self.in_channels = 32
+        self.in_channels = base_dim
         self.b012_conv1 = nn.Sequential(
-            nn.Conv2d(params[BENCHMARK]['n_channels'], 32, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(params[BENCHMARK]['n_channels'], base_dim, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(base_dim),
             nn.ReLU(inplace=True))
         #we use a different inputsize than the original paper
         #so conv2_x's stride is 1
-        self.b012_conv2_x = self._make_layer(block, 32, num_block[0], 1)
-        self.b12_conv3_x = self._make_layer(block, 64, num_block[1], 2)
-        self.b2_conv4_x = self._make_layer(block, 128, num_block[2], 2)
+        self.b012_conv2_x = self._make_layer(block, base_dim, num_block[0], 1)
+        self.b12_conv3_x = self._make_layer(block, 2*base_dim, num_block[1], 2)
+        self.b2_conv4_x = self._make_layer(block, 4*base_dim, num_block[2], 2)
         # self.b2_conv5_x = self._make_layer(block, 512, num_block[3], 2)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.b012_fc = nn.Linear(128 * block.expansion, num_classes)
+        self.b012_fc = nn.Linear(4*base_dim * block.expansion, num_classes)
         self.b0_fc = nn.Sequential(
-            nn.Linear(32 * block.expansion, 128 * block.expansion),
-            nn.BatchNorm1d( 128 * block.expansion),
+            nn.Linear(base_dim * block.expansion, 4*base_dim * block.expansion),
+            nn.BatchNorm1d( 4*base_dim * block.expansion),
             nn.ReLU(inplace=True)
         ) 
         self.b1_fc = nn.Sequential(
-            nn.Linear(64 * block.expansion, 128 * block.expansion),
-            nn.BatchNorm1d( 128 * block.expansion),
+            nn.Linear(2*base_dim * block.expansion, 4*base_dim * block.expansion),
+            nn.BatchNorm1d( 4*base_dim * block.expansion),
             nn.ReLU(inplace=True)
         ) 
 

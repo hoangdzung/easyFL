@@ -68,6 +68,7 @@ def read_option():
     parser.add_argument('--temp', type=float, help='temp for regular kl, default 5, set negative for not used', default=5)
     parser.add_argument('--weighted', help='weighted branches', action='store_true')
     parser.add_argument('--model_type', help='used for fedavg hete', type=int, default=2)
+    parser.add_argument('--base_dim', help='dimension of the first layer', type=int, default=32)
     
     # server gpu
     parser.add_argument('--server_gpu_id', help='server process on this gpu', type=int, default=0)
@@ -136,15 +137,16 @@ def initialize(option):
     # init server
     print("init server...", end='')
     server_path = '%s.%s' % ('algorithm', option['algorithm'])
-    server = getattr(importlib.import_module(server_path), 'Server')(option, utils.fmodule.Model().to(utils.fmodule.device), clients, test_data = test_data, valid_data=valid_data)
+    server = getattr(importlib.import_module(server_path), 'Server')(option, utils.fmodule.Model(base_dim=option['base_dim']).to(utils.fmodule.device), clients, test_data = test_data, valid_data=valid_data)
     print('done')
     return server
 
 def output_filename(option, server):
     header = "{}_".format(option["algorithm"])
     for para in server.paras_name: header = header + para + "{}_".format(option[para])
-    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}_MU{:.2f}_1RATE{:.2f}_SELFKD{}_WEIGHTED_{}.json".format(
+    output_name = header + "M{}_DIM{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}_MU{:.2f}_1RATE{:.2f}_SELFKD{}_WEIGHTED_{}.json".format(
         option['model'],
+        option['base_dim'],
         option['num_rounds'],
         option['batch_size'],
         option['num_epochs'],
