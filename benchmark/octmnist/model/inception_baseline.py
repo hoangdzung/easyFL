@@ -49,7 +49,7 @@ class Model(FModule):
         super(Model, self).__init__()
         self.b012_conv1 = nn.Sequential(
             ConvBlock(
-                in_channels=3, 
+                in_channels=params[BENCHMARK]['n_channels'], 
                 out_chanels=32,
                 kernel_size=(7, 7),
                 stride=(2, 2),
