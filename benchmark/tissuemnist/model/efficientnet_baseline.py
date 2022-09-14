@@ -177,13 +177,13 @@ class Model(FModule):
             self.total_blocks += conf[6]
 
         self.b012_conv2 = self._make_block(self.config[0])
-        self.b12_conv3 = self._make_block(self.config[1])
-        self.b2_conv4 = self._make_block(self.config[2])
+        # self.b12_conv3 = self._make_block(self.config[1])
+        # self.b2_conv4 = self._make_block(self.config[2])
 
         # last several layers
         self.b0_head_conv = _Conv1x1Bn(self.config[0][1], feature_size)
-        self.b1_head_conv = _Conv1x1Bn(self.config[1][1], feature_size)
-        self.b2_head_conv = _Conv1x1Bn(self.config[2][1], feature_size)
+        # self.b1_head_conv = _Conv1x1Bn(self.config[1][1], feature_size)
+        # self.b2_head_conv = _Conv1x1Bn(self.config[2][1], feature_size)
         #self.avgpool = nn.AvgPool2d(input_size//32, stride=1)
         self.dropout = nn.Dropout(param[3])
         self.b012_fc = nn.Linear(feature_size, num_classes)
@@ -206,48 +206,10 @@ class Model(FModule):
         x = self.b012_conv1(x)
         x = self.b012_conv2(x)
 
-        if n==0:
-            x = self.b0_head_conv(x)
-            x = torch.mean(x, (2, 3))
-            x = self.b012_fc(x) 
-            return x
-
-        x = self.b12_conv3(x)
-        if n==1:
-            x = self.b1_head_conv(x)
-            x = torch.mean(x, (2, 3))
-            x = self.b012_fc(x) 
-            return x
-
-        x = self.b2_conv4(x)
-        x = self.b2_head_conv(x)
+        x = self.b0_head_conv(x)
         x = torch.mean(x, (2, 3))
         x = self.b012_fc(x) 
         return x
-
-    def pred_and_rep(self, x, n=3):
-
-        x = self.b012_conv1(x)
-        x = self.b012_conv2(x)
-
-        if n==0:
-            x = self.b0_head_conv(x)
-            e = torch.mean(x, (2, 3))
-            x = self.b012_fc(e) 
-            return x, [e]
-
-        x = self.b12_conv3(x)
-        if n==1:
-            x = self.b1_head_conv(x)
-            e = torch.mean(x, (2, 3))
-            x = self.b012_fc(e) 
-            return x, [e]
-
-        x = self.b2_conv4(x)
-        x = self.b2_head_conv(x)
-        e = torch.mean(x, (2, 3))
-        x = self.b012_fc(e) 
-        return x, [e]
         
     def _initialize_weights(self):
         for m in self.modules():

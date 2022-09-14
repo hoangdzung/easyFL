@@ -202,17 +202,6 @@ class Model(FModule):
             self.n_blocks += 1
         return nn.Sequential(*blocks)
 
-    def forward(self, x):
-        x = self.stem_conv(x)
-        x = self.blocks(x)
-        x = self.head_conv(x)
-        #x = self.avgpool(x)
-        #x = x.view(x.size(0), -1)
-        x = torch.mean(x, (2, 3))
-        x = self.dropout(x)
-        x = self.classifier(x)
-
-        return x
     def forward(self, x, n=3):
         x = self.b012_conv1(x)
         x = self.b012_conv2(x)
