@@ -176,7 +176,7 @@ class Client(BasicClient):
 
 
     def get_loss(self, model, data, device, src_model=None):
-        data = self.data_to_device(data, device)    
+        data = self.data_to_device(data, device)   
         if len(data) == 4:
             img, target, index, contrast_idx = data
         else:

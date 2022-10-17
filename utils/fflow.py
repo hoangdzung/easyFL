@@ -124,7 +124,7 @@ def initialize(option):
 
     # get task dataset
     task_reader = getattr(importlib.import_module(bmk_core_path), 'TaskReader')(taskpath=os.path.join('fedtask', option['task']))
-    train_datas, valid_data, test_data, client_names = task_reader.read_data()
+    train_datas, valid_data, test_data, client_names = task_reader.read_data(sample= option['algorithm'] == 'fedbranchy_crd')
     num_clients = len(client_names)
     print("done")
 

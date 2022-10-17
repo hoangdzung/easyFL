@@ -529,7 +529,7 @@ class XYTaskReader(BasicTaskReader):
     def __init__(self, taskpath=''):
         super(XYTaskReader, self).__init__(taskpath)
 
-    def read_data(self):
+    def read_data(self, sample=False):
         if os.path.isfile(os.path.join(self.taskpath, 'data.json')):
             with open(os.path.join(self.taskpath, 'data.json'), 'r') as inf:
                 feddata = ujson.load(inf)
@@ -541,7 +541,10 @@ class XYTaskReader(BasicTaskReader):
                  
         test_data = XYDataset(feddata['dtest']['x'], feddata['dtest']['y'])
         valid_datas = XYDataset(feddata['dvalid']['x'], feddata['dvalid']['y'])
-        train_datas = [XYDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
+        if not sample:
+            train_datas = [XYDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
+        else:
+            train_datas = [XYSampleDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
         # valid_datas = [XYDataset(feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']) for name in feddata['client_names']]
         return train_datas, valid_datas, test_data, feddata['client_names']
 
@@ -602,6 +605,76 @@ class XYDataset(Dataset):
 
     def get_all_labels(self):
         return self.all_labels
+
+class XYSampleDataset(XYDataset):
+    def __init__(self, X=[], Y=[], totensor = True, percent=1.0, mode='exact', k=100):
+        """ Init Dataset with pairs of features and labels/annotations.
+        XYDataset transforms data that is list\array into tensor.
+        The data is already loaded into memory before passing into XYDataset.__init__()
+        and thus is only suitable for benchmarks with small size (e.g. CIFAR10, MNIST)
+        Args:
+            X: a list of features
+            Y: a list of labels with the same length of X
+        """
+        super(XYSampleDataset, self).__init__(X, Y, totensor)
+        self.mode = mode
+        self.k = k
+        num_samples, num_classes = len(X) ,len(self.all_labels)
+        self.label_to_idx = {label: idx for idx, label in enumerate(sorted(self.all_labels))}
+        self.idx_to_label = {idx: label for label, idx in self.label_to_idx.items()}
+
+        self.cls_positive = collections.defaultdict(list)
+        
+        for i in range(num_samples):
+            self.cls_positive[Y[i]].append(i)
+        self.cls_negative = collections.defaultdict(list)
+        for label in self.all_labels:
+            for label_ in self.all_labels:
+                if label == label_:
+                    continue
+
+                self.cls_negative[label].extend(self.cls_positive[label_])
+        self.cls_positive = [np.asarray(self.cls_positive[self.idx_to_label[i]]) for i in range(num_classes)]
+        self.cls_negative = [np.asarray(self.cls_negative[self.idx_to_label[i]]) for i in range(num_classes)]
+        
+        if 0 < percent < 1:
+            n = int(len(self.cls_negative[0]) * percent)
+            self.cls_negative = [np.random.permutation(self.cls_negative[self.idx_to_label[i]])[0:n]
+                                 for i in range(num_classes)]
+
+        self.cls_positive = np.asarray(self.cls_positive)
+        self.cls_negative = np.asarray(self.cls_negative)
+
+    def __len__(self):
+        return len(self.Y)
+
+    def __getitem__(self, index):
+        img, target = self.X[index], self.Y[index]
+        if self.mode == 'exact':
+            pos_idx = index
+        elif self.mode == 'relax':
+            pos_idx = np.random.choice(self.cls_positive[target], 1)
+            pos_idx = pos_idx[0]
+        else:
+            raise NotImplementedError(self.mode)
+
+        replace = True if self.k > len(self.cls_negative[target]) else False
+        neg_idx = np.random.choice(self.cls_negative[target], self.k, replace=replace)
+        sample_idx = np.hstack((np.asarray([pos_idx]), neg_idx))
+
+        return img, target, index, sample_idx
+
+    def tolist(self):
+        if not isinstance(self.X, torch.Tensor):
+            return self.X, self.Y
+        return self.X.tolist(), self.Y.tolist()
+
+    def _check_equal_length(self, X, Y):
+        return len(X)==len(Y)
+
+    def get_all_labels(self):
+        return self.all_labels
+
 
 class IDXDataset(Dataset):
     # The source dataset that can be indexed by IDXDataset
