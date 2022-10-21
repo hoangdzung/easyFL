@@ -653,13 +653,13 @@ class XYSampleDataset(XYDataset):
         if self.mode == 'exact':
             pos_idx = index
         elif self.mode == 'relax':
-            pos_idx = np.random.choice(self.cls_positive[self.label_to_idx[target]], 1)
+            pos_idx = np.random.choice(self.cls_positive[self.label_to_idx[target.item()]], 1)
             pos_idx = pos_idx[0]
         else:
             raise NotImplementedError(self.mode)
 
-        replace = True if self.k > len(self.cls_negative[self.label_to_idx[target]]) else False
-        neg_idx = np.random.choice(self.cls_negative[self.label_to_idx[target]], self.k, replace=replace)
+        replace = True if self.k > len(self.cls_negative[self.label_to_idx[target.item()]]) else False
+        neg_idx = np.random.choice(self.cls_negative[self.label_to_idx[target.item()]], self.k, replace=replace)
         sample_idx = np.hstack((np.asarray([pos_idx]), neg_idx))
 
         return img, target, index, sample_idx
