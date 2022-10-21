@@ -156,7 +156,7 @@ class CRDLoss(nn.Module):
         opt.nce_m: the momentum for updating the memory buffer
         opt.n_data: the number of samples in the training set, therefor the memory buffer is: opt.n_data x opt.feat_dim
     """
-    def __init__(self, n_data, s_dim = 128, t_dim = 128, feat_dim = 32, nce_k = 10000, nce_t = 0.07, nce_m = 0.5):
+    def __init__(self, n_data, s_dim = 128, t_dim = 128, feat_dim = 32, nce_k = 100, nce_t = 0.07, nce_m = 0.5):
         super(CRDLoss, self).__init__()
         self.embed_s = Embed(s_dim, feat_dim)
         self.embed_t = Embed(t_dim, feat_dim)
