@@ -15,7 +15,7 @@ from .crd_utils import CRDLoss
 class Server(BasicServer):
     def __init__(self, option, model, clients, valid_data = None, test_data = None, **kwargs):
         super(Server, self).__init__(option, model, clients, valid_data, test_data, **kwargs)
-        self.paras_name = ['sample_weights', 'agg_weights', 'temp']
+        self.paras_name = ['sample_weights', 'agg_weights']
         self.factors = {i:j for i, j in enumerate(option['agg_weights'])}
 
     def finish(self, model_path):
@@ -89,12 +89,11 @@ class Client(BasicClient):
         if 'loss_weight' in option:
             self.lossfunc = nn.CrossEntropyLoss(torch.tensor(option['loss_weight']).cuda())
         else:
-            self.lossfunc = nn.CrossEntropyLoss()
+            self.lossfunc = nn.CrossEntropyLoss().cuda())
 
-        self.crdloss = CRDLoss(n_data = len(train_data))
+        self.crdloss = CRDLoss(n_data = len(train_data)).cuda())
         self.kd_factor = option['mu']
         self.sample_weights = np.array(option['sample_weights'])/sum(option['sample_weights'])
-        self.temp = option['temp']
         self.model_type = np.random.choice(3, p=self.sample_weights)
         self.step = 0
 
@@ -148,7 +147,7 @@ class Client(BasicClient):
         model = model.to(device)
         model.train()
     
-        if self.kd_factor >0 and not self.self_kd:
+        if self.kd_factor >0:
             src_model = copy.deepcopy(model).to(device)
             src_model.freeze_grad()
         else:
@@ -189,19 +188,20 @@ class Client(BasicClient):
         else:
             loss = self.lossfunc(outputs_s, target)
         kl_loss = 0
-        if self.kd_factor > 0:
+        if self.kd_factor > 0 and index is not None and contrast_idx is not None:
 
-            outputs_t , representations_t = src_model.pred_and_rep(tdata[0], self.model_type)     
-            if self.temp <= 0:
-                kl_loss = sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_s))
-            elif type(outputs_s) == list:
-                kl_loss = self.temp**2 * nn.KLDivLoss()(F.log_softmax(outputs_s[-1]/self.temp, dim=1),
-                                    F.softmax(outputs_t[-1]/self.temp, dim=1)) 
-            else:
-                kl_loss = self.temp**2 * nn.KLDivLoss()(F.log_softmax(outputs_s/self.temp, dim=1),
-                                        F.softmax(outputs_t/self.temp, dim=1)) 
-            if index is not None and contrast_idx is not None:
-                kl_loss += self.crdloss(representations_s[-1], representations_t[-1], index, contrast_idx)
+            outputs_t , representations_t = src_model.pred_and_rep(img, self.model_type)     
+            # if self.temp <= 0:
+            #     kl_loss = sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_s))
+            # elif type(outputs_s) == list:
+            #     kl_loss = self.temp**2 * nn.KLDivLoss()(F.log_softmax(outputs_s[-1]/self.temp, dim=1),
+            #                         F.softmax(outputs_t[-1]/self.temp, dim=1)) 
+            # else:
+            #     kl_loss = self.temp**2 * nn.KLDivLoss()(F.log_softmax(outputs_s/self.temp, dim=1),
+            #                             F.softmax(outputs_t/self.temp, dim=1)) 
+            # if index is not None and contrast_idx is not None:
+            
+            kl_loss += self.crdloss(representations_s[-1], representations_t[-1], index, contrast_idx)
 
         return loss, kl_loss
 
