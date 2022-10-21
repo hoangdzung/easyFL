@@ -87,11 +87,11 @@ class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         if 'loss_weight' in option:
-            self.lossfunc = nn.CrossEntropyLoss(torch.tensor(option['loss_weight']).cuda()
+            self.lossfunc = nn.CrossEntropyLoss(torch.tensor(option['loss_weight']).cuda())
         else:
             self.lossfunc = nn.CrossEntropyLoss().cuda()
 
-        self.crdloss = CRDLoss(n_data = len(train_data)).cuda())
+        self.crdloss = CRDLoss(n_data = len(train_data)).cuda()
         self.kd_factor = option['mu']
         self.sample_weights = np.array(option['sample_weights'])/sum(option['sample_weights'])
         self.model_type = np.random.choice(3, p=self.sample_weights)
