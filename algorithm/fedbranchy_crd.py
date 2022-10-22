@@ -91,7 +91,7 @@ class Client(BasicClient):
         else:
             self.lossfunc = nn.CrossEntropyLoss().cuda()
 
-        self.crdloss = CRDLoss(n_data = len(train_data)).cuda()
+        self.crdloss = CRDLoss(n_data = len(train_data), s_dim = 4 * option['base_dim'], t_dim = 4 * option['base_dim']).cuda()
         self.kd_factor = option['mu']
         self.sample_weights = np.array(option['sample_weights'])/sum(option['sample_weights'])
         self.model_type = np.random.choice(3, p=self.sample_weights)
