@@ -69,6 +69,8 @@ def read_option():
     parser.add_argument('--weighted', help='weighted branches', action='store_true')
     parser.add_argument('--model_type', help='used for fedavg hete', type=int, default=2)
     parser.add_argument('--base_dim', help='dimension of the first layer', type=int, default=32)
+
+    parser.add_argument('--nce_t', default=0.07, type=float, help='temperature parameter for softmax')
     
     # server gpu
     parser.add_argument('--server_gpu_id', help='server process on this gpu', type=int, default=0)

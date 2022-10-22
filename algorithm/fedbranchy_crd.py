@@ -15,7 +15,7 @@ from .crd_utils import CRDLoss
 class Server(BasicServer):
     def __init__(self, option, model, clients, valid_data = None, test_data = None, **kwargs):
         super(Server, self).__init__(option, model, clients, valid_data, test_data, **kwargs)
-        self.paras_name = ['sample_weights', 'agg_weights']
+        self.paras_name = ['sample_weights', 'agg_weights', 'nce_t']
         self.factors = {i:j for i, j in enumerate(option['agg_weights'])}
 
     def finish(self, model_path):
@@ -91,7 +91,13 @@ class Client(BasicClient):
         else:
             self.lossfunc = nn.CrossEntropyLoss().cuda()
 
-        self.crdloss = CRDLoss(n_data = len(train_data), s_dim = 4 * option['base_dim'], t_dim = 4 * option['base_dim']).cuda()
+        if option['model'] == 'efficientnet':
+            feat_dim = 128 
+        elif option['model'] == 'inception':
+            feat_dim = 256 
+        else:
+            feat_dim = 4 * option['base_dim']
+        self.crdloss = CRDLoss(n_data = len(train_data), s_dim = feat_dim, t_dim = feat_dim, nce_t=option['nce_t']).cuda()
         self.kd_factor = option['mu']
         self.sample_weights = np.array(option['sample_weights'])/sum(option['sample_weights'])
         self.model_type = np.random.choice(3, p=self.sample_weights)
