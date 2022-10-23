@@ -9,6 +9,8 @@
 """
 import torch.nn as nn
 from utils.fmodule import FModule
+from benchmark.medmnist_params import params
+from ..core import BENCHMARK
 
 class BasicBlock(nn.Module):
     """Basic Block for resnet 18 and resnet 34
@@ -77,11 +79,11 @@ class BottleNeck(nn.Module):
         return nn.ReLU(inplace=True)(self.residual_function(x) + self.shortcut(x))
 
 class Model(FModule):
-    def __init__(self, block=BasicBlock, num_block=[1,2,2,2], num_classes=11):
+    def __init__(self, block=BasicBlock, num_block=[1,2,2,2], num_classes=params[BENCHMARK]['n_labels']):
         super().__init__()
         self.in_channels = 32
         self.b012_conv1 = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3, padding=1, bias=False),
+            nn.Conv2d(params[BENCHMARK]['n_channels'], 32, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True))
         #we use a different inputsize than the original paper

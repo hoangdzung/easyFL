@@ -51,6 +51,8 @@ def read_option():
     # constructing the heterogeity of computing capability
     parser.add_argument('--capability', help="controlling the difference of local computing capability of each client", type=float, default=0)
     parser.add_argument('--small_machine_rate', help="proportion of smaller machines", type=float, default=0.5)
+    parser.add_argument('--sample_weights', type=float, nargs=3, default=[1.0, 1.0, 1.0], help='list of 3 floats used as machine type probabilities')
+    parser.add_argument('--agg_weights', type=int, nargs=3, default=[1, 5, 10], help='list of 3 ints used as weights of models')
 
     # hyper-parameters of different algorithms
     parser.add_argument('--learning_rate_lambda', help='η for λ in afl', type=float, default=0)
@@ -58,12 +60,17 @@ def read_option():
     parser.add_argument('--epsilon', help='ε in fedmgda+', type=float, default='0.0')
     parser.add_argument('--eta', help='global learning rate in fedmgda+', type=float, default='1.0')
     parser.add_argument('--tau', help='the length of recent history gradients to be contained in FedFAvg', type=int, default=0)
-    parser.add_argument('--alpha', help='proportion of clients keeping original direction in FedFV/alpha in fedFA', type=float, default='0.0')
+    parser.add_argument('--alpha', help='proportion of clients keeping original direction in FedFV/alpha in fedFA', type=float, default='0.1')
     parser.add_argument('--beta', help='beta in FedFA',type=float, default='1.0')
     parser.add_argument('--gamma', help='gamma in FedFA', type=float, default='0')
     parser.add_argument('--mu', help='mu in fedprox or in fedbranchy', type=float, default='0.1')
     parser.add_argument('--selfkd', help='use selfkd or not in mp_fedbranchy_selfkd', action='store_true')
+    parser.add_argument('--temp', type=float, help='temp for regular kl, default 5, set negative for not used', default=5)
     parser.add_argument('--weighted', help='weighted branches', action='store_true')
+    parser.add_argument('--model_type', help='used for fedavg hete', type=int, default=2)
+    parser.add_argument('--base_dim', help='dimension of the first layer', type=int, default=32)
+
+    parser.add_argument('--nce_t', default=0.07, type=float, help='temperature parameter for softmax')
     
     # server gpu
     parser.add_argument('--server_gpu_id', help='server process on this gpu', type=int, default=0)
@@ -108,6 +115,7 @@ def initialize(option):
     # get model of that benchmark
     bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
     utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
+    utils.fmodule.base_dim = option['base_dim']
 
     # get preprocess core of that benchmark 
     bmk_core_path = '.'.join(['benchmark', bmk_name, 'core'])
@@ -118,7 +126,7 @@ def initialize(option):
 
     # get task dataset
     task_reader = getattr(importlib.import_module(bmk_core_path), 'TaskReader')(taskpath=os.path.join('fedtask', option['task']))
-    train_datas, valid_datas, test_data, client_names = task_reader.read_data()
+    train_datas, valid_data, test_data, client_names = task_reader.read_data(sample= option['algorithm'] == 'fedbranchy_crd')
     num_clients = len(client_names)
     print("done")
 
@@ -126,21 +134,22 @@ def initialize(option):
     print('init clients...', end='')
     client_path = '%s.%s' % ('algorithm', option['algorithm'])
     Client=getattr(importlib.import_module(client_path), 'Client')
-    clients = [Client(option, name = client_names[cid], train_data = train_datas[cid], valid_data = valid_datas[cid]) for cid in range(num_clients)]
+    clients = [Client(option, name = client_names[cid], train_data = train_datas[cid], valid_data = None) for cid in range(num_clients)]
     print('done')
 
     # init server
     print("init server...", end='')
     server_path = '%s.%s' % ('algorithm', option['algorithm'])
-    server = getattr(importlib.import_module(server_path), 'Server')(option, utils.fmodule.Model().to(utils.fmodule.device), clients, test_data = test_data)
+    server = getattr(importlib.import_module(server_path), 'Server')(option, utils.fmodule.Model(base_dim=option['base_dim']).to(utils.fmodule.device), clients, test_data = test_data, valid_data=valid_data)
     print('done')
     return server
 
 def output_filename(option, server):
     header = "{}_".format(option["algorithm"])
     for para in server.paras_name: header = header + para + "{}_".format(option[para])
-    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}_MU{:.2f}_1RATE{:.2f}_SELFKD{}_WEIGHTED_{}.json".format(
+    output_name = header + "M{}_DIM{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}_MU{:.2f}_1RATE{:.2f}_SELFKD{}_WEIGHTED_{}.json".format(
         option['model'],
+        option['base_dim'],
         option['num_rounds'],
         option['batch_size'],
         option['num_epochs'],

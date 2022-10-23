@@ -45,9 +45,10 @@ def KL_divergence(teacher_batch_input, student_batch_input, device):
 
 
 class Server(BasicServer):
-    def __init__(self, option, model, clients, test_data = None):
-        super(Server, self).__init__(option, model, clients, test_data)
-        self.n_branches = 2
+    def __init__(self, option, model, clients, valid_data = None, test_data = None):
+        super(Server, self).__init__(option, model, clients, valid_data, test_data)
+        self.paras_name = ['sample_weights', 'agg_weights', 'temp']
+        self.factors = {i:j for i, j in enumerate(option['agg_weights'])}
 
     def finish(self, model_path):
         if not Path(model_path).exists():
@@ -66,13 +67,13 @@ class Server(BasicServer):
             return
         device0 = torch.device(f"cuda")
         models = [i.to(device0) for i in models]
-#         self.model = self.aggregate(models, p = [1.0 for cid in self.selected_clients])
+        # self.model = self.aggregate(models, p = [1.0 for cid in self.selected_clients])
 
         state_dict = self.average_weights(models, model_types, [self.client_vols[cid] for cid in self.selected_clients])
         self.model.load_state_dict(state_dict)
         return
 
-    def test(self, model=None, device=torch.device('cuda')):
+    def test(self, model=None, split='test', device=torch.device('cuda')):
         """
         Evaluate the model on the test dataset owned by the server.
         :param
@@ -80,36 +81,40 @@ class Server(BasicServer):
         :return:
             the metric and loss of the model on the test data
         """
+
+        if split=='test' and self.test_data:
+            data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
+        elif split =='val' and self.val_data:
+            data_loader = self.calculator.get_data_loader(self.val_data, batch_size=64)
+        else:
+            return -1, -1
+        
         if model==None: 
             model=self.model
-        if self.test_data:
-            model.eval()
-            losses = 0
-            eval_metrics =0
-            data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
-            for batch_id, batch_data in enumerate(data_loader):
-                bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device)
-                losses += bmean_loss * len(batch_data[1])
-                eval_metrics += bmean_eval_metric * len(batch_data[1])
-            eval_metrics /= len(self.test_data)
-            losses /= len(self.test_data)
-            return eval_metrics, losses
-        else: 
-            return -1, -1
-            
+        model.eval()
+        losses = 0
+        eval_metrics =0
+        data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
+        for batch_id, batch_data in enumerate(data_loader):
+            bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device)
+            losses += bmean_loss * len(batch_data[1])
+            eval_metrics += bmean_eval_metric * len(batch_data[1])
+        eval_metrics /= len(self.test_data)
+        losses /= len(self.test_data)
+        return eval_metrics, losses
+
     def average_weights(self, models, model_types, weights):
         """
         Returns the average of the weights.
         """
-        factors = {0:1, 1:5, 2:10}
-#         factors = {0:10, 1:5, 2:1}
+
         state_dicts = [model.state_dict() for model in models]
         w_avg = copy.deepcopy(state_dicts[0])
         for key in w_avg.keys():
             branches = [int(i) for i in key.split('_')[0][1:]]
             if model_types[0] in branches:
-                w = factors[model_types[0]]*weights[0]
-                w_avg[key] *= weights[0]*factors[model_types[0]]
+                w = self.factors[model_types[0]]*weights[0]
+                w_avg[key] *= weights[0]*self.factors[model_types[0]]
             else:
                 w = 0
                 w_avg[key] = 0
@@ -117,8 +122,8 @@ class Server(BasicServer):
             for i in range(1, len(state_dicts)):
                 if model_types[i] in branches:
 #                     print(key, model_types[i], torch.abs(state_dicts[i][key]*1.0).mean(), torch.abs(state_dicts[i][key]*1.0).std())
-                    w_avg[key] += factors[model_types[i]]*weights[i] * state_dicts[i][key]
-                    w += weights[i]*factors[model_types[i]]
+                    w_avg[key] += self.factors[model_types[i]]*weights[i] * state_dicts[i][key]
+                    w += weights[i]*self.factors[model_types[i]]
             if w > 0:
                 w_avg[key] = w_avg[key]/ w
             else:
@@ -150,9 +155,10 @@ class Client(BasicClient):
         self.kd_factor = option['mu']
         self.self_kd = option['selfkd']
         self.weighted = option['weighted']
-        self.T = 3
-        self.model_type = np.random.randint(0,self.T)
-        self.step=0
+        self.sample_weights = np.array(option['sample_weights'])/sum(option['sample_weights'])
+        self.temp = option['temp']
+        self.model_type = np.random.choice(3, p=self.sample_weights)
+        self.step = 0
     def reply(self, svr_pkg):
         """
         Reply to server with the transmitted package.
@@ -237,22 +243,23 @@ class Client(BasicClient):
         kl_loss = 0
         if self.kd_factor > 0:
             if self.self_kd:
-#                 for r_s in representations_s[:-1]:
-#                     kl_loss += KL_divergence(representations_s[-1].detach(), r_s, device)
-#                 for o_s in outputs_s[:-1]:
-                kl_loss = 10**2 * nn.KLDivLoss()(F.log_softmax(outputs_s[-1]/10, dim=1),
-                            F.softmax(outputs_s[0]/10, dim=1)) 
+                if self.temp <= 0:
+                    for r_s in representations_s[:-1]:
+                        kl_loss += KL_divergence(representations_s[-1].detach(), r_s, device)
+                elif type(outputs_s) == list:
+                    for output in outputs_s[:-1]:
+                        kl_loss += self.temp**2 * nn.KLDivLoss()(F.log_softmax(output/self.temp, dim=1),
+                                    F.softmax(outputs_s[-1]/self.temp, dim=1)) 
             else:
                 outputs_t , representations_t = src_model.pred_and_rep(tdata[0], self.model_type)     
-#                 kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_s))
-#                 kl_loss += sum(KL_divergence(representations_t[0], rs, device) for rs in representations_s)
-#                 kl_loss += sum(((rt-rs)**2).mean() for rt, rs in zip(representations_t, representations_s))
-                if type(outputs_s) == list:
-                    kl_loss = 10**2 * nn.KLDivLoss()(F.log_softmax(outputs_s[-1]/10, dim=1),
-                                        F.softmax(outputs_t[-1]/10, dim=1)) 
+                if self.temp <= 0:
+                    kl_loss += sum(KL_divergence(rt, rs, device) for rt, rs in zip(representations_t, representations_s))
+                elif type(outputs_s) == list:
+                    kl_loss = self.temp**2 * nn.KLDivLoss()(F.log_softmax(outputs_s[-1]/self.temp, dim=1),
+                                        F.softmax(outputs_t[-1]/self.temp, dim=1)) 
                 else:
-                    kl_loss = 10**2 * nn.KLDivLoss()(F.log_softmax(outputs_s/10, dim=1),
-                                            F.softmax(outputs_t/10, dim=1)) 
+                    kl_loss = self.temp**2 * nn.KLDivLoss()(F.log_softmax(outputs_s/self.temp, dim=1),
+                                            F.softmax(outputs_t/self.temp, dim=1)) 
 
         return loss, kl_loss
 

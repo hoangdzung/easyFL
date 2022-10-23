@@ -8,12 +8,13 @@ import utils.fflow as flw
 import torch 
 
 class BasicServer():
-    def __init__(self, option, model, clients, test_data = None):
+    def __init__(self, option, model, clients, valid_data=None, test_data = None):
         # basic setting
         self.task = option['task']
         self.name = option['algorithm']
         self.model = model
         self.test_data = test_data
+        self.valid_data = valid_data
         self.eval_interval = option['eval_interval']
         self.num_threads = option['num_threads']
         # clients settings
@@ -53,8 +54,8 @@ class BasicServer():
             # decay learning rate
             self.global_lr_scheduler(round)
 
-            logger.time_end('Time Cost')
             if logger.check_if_log(round, self.eval_interval): logger.log(self)
+            logger.time_end('Time Cost')
 
         print("=================End==================")
         logger.time_end('Total Time Cost')
@@ -253,7 +254,7 @@ class BasicServer():
             losses.append(loss)
         return evals, losses
 
-    def test(self, model=None):
+    def test(self, model=None, split='test', device=torch.device('cuda')):
         """
         Evaluate the model on the test dataset owned by the server.
         :param
@@ -261,21 +262,28 @@ class BasicServer():
         :return:
             the metric and loss of the model on the test data
         """
-        if model==None: model=self.model
-        if self.test_data:
-            model.eval()
-            loss = 0
-            eval_metric = 0
+
+        if split=='test' and self.test_data:
             data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
-            for batch_id, batch_data in enumerate(data_loader):
-                bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data)
-                loss += bmean_loss * len(batch_data[1])
-                eval_metric += bmean_eval_metric * len(batch_data[1])
-            eval_metric /= len(self.test_data)
-            loss /= len(self.test_data)
-            return eval_metric, loss
-        else: 
-            return -1,-1
+        elif split =='val' and self.val_data:
+            data_loader = self.calculator.get_data_loader(self.val_data, batch_size=64)
+        else:
+            return -1, -1
+        
+        if model==None: 
+            model=self.model
+
+        model.eval()
+        losses = 0
+        eval_metrics =0
+        data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
+        for batch_id, batch_data in enumerate(data_loader):
+            bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data, device)
+            losses += bmean_loss * len(batch_data[1])
+            eval_metrics += bmean_eval_metric * len(batch_data[1])
+        eval_metrics /= len(self.test_data)
+        losses /= len(self.test_data)
+        return eval_metrics, losses
 
 class BasicClient():
     def __init__(self, option, name='', train_data=None, valid_data=None):

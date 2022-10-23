@@ -31,6 +31,7 @@ import torch
 ssl._create_default_https_context = ssl._create_unverified_context
 import importlib
 import pickle 
+import collections
 
 def set_random_seed(seed=0):
     """Set random seed"""
@@ -71,6 +72,8 @@ class BasicTaskGen:
         self.benchmark = benchmark
         self.rootpath = './fedtask'
         self.rawdata_path = rawdata_path
+        if not os.path.isdir(self.rawdata_path):
+            os.makedirs(self.rawdata_path)
         self.dist_id = dist_id
         self.dist_name = self._TYPE_DIST[dist_id]
         self.skewness = 0 if dist_id==0 else skewness
@@ -157,14 +160,14 @@ class DefaultTaskGen(BasicTaskGen):
         # partition data and hold-out for each local dataset
         print('-----------------------------------------------------')
         print('Partitioning data...')
-        local_datas = self.partition()
-        train_cidxs, valid_cidxs = self.local_holdout(local_datas, rate=0.8, shuffle=True)
+        train_cidxs = self.partition()
+        # train_cidxs, valid_cidxs = self.local_holdout(local_datas, rate=0.8, shuffle=True)
         print('Done.')
         # save task infomation as .json file and the federated dataset
         print('-----------------------------------------------------')
         print('Saving data...')
         self.save_info()
-        self.save_data(train_cidxs, valid_cidxs)
+        self.save_data(train_cidxs)
         print('Done.')
         return
 
@@ -261,7 +264,56 @@ class DefaultTaskGen(BasicTaskGen):
                     local_datas[i].extend(all_idxs[rand * shardsize:(rand + 1) * shardsize])
 
         elif self.dist_id == 4:
-            pass
+            MIN_ALPHA = 0.01
+            alpha = (-4*np.log(self.skewness + 10e-8))**4
+            alpha = max(alpha, MIN_ALPHA)
+            labels = [self.train_data[did][-1] for did in range(len(self.train_data))]
+            lb_counter = collections.Counter(labels)
+            p = np.array([1.0*v/len(self.train_data) for v in lb_counter.values()])
+            lb_dict = {}
+            labels = np.array(labels)
+            for lb in range(len(lb_counter.keys())):
+                lb_dict[lb] = np.where(labels==lb)[0]
+            proportions = [np.random.dirichlet(alpha*p) for _ in range(self.num_clients)]
+            while np.any(np.isnan(proportions)):
+                proportions = [np.random.dirichlet(alpha * p) for _ in range(self.num_clients)]
+            while True:
+                # generate dirichlet distribution till ||E(proportion) - P(D)||<=1e-5*self.num_classes
+                mean_prop = np.mean(proportions, axis=0)
+                error_norm = ((mean_prop-p)**2).sum()
+                print("Error: {:.8f}".format(error_norm))
+                if error_norm<=1e-2/self.num_classes:
+                    break
+                exclude_norms = []
+                for cid in range(self.num_clients):
+                    mean_excid = (mean_prop*self.num_clients-proportions[cid])/(self.num_clients-1)
+                    error_excid = ((mean_excid-p)**2).sum()
+                    exclude_norms.append(error_excid)
+                excid = np.argmin(exclude_norms)
+                sup_prop = [np.random.dirichlet(alpha*p) for _ in range(self.num_clients)]
+                alter_norms = []
+                for cid in range(self.num_clients):
+                    if np.any(np.isnan(sup_prop[cid])):
+                        continue
+                    mean_alter_cid = mean_prop - proportions[excid]/self.num_clients + sup_prop[cid]/self.num_clients
+                    error_alter = ((mean_alter_cid-p)**2).sum()
+                    alter_norms.append(error_alter)
+                if len(alter_norms)>0:
+                    alcid = np.argmin(alter_norms)
+                    proportions[excid] = sup_prop[alcid]
+            local_datas = [[] for _ in range(self.num_clients)]
+            # self.dirichlet_dist = [] # for efficiently visualizing
+            for lb in lb_counter.keys():
+                lb_idxs = lb_dict[lb]
+                lb_proportion = np.array([pi[lb] for pi in proportions])
+                lb_proportion = lb_proportion/lb_proportion.sum()
+                lb_proportion = (np.cumsum(lb_proportion) * len(lb_idxs)).astype(int)[:-1]
+                lb_datas = np.split(lb_idxs, lb_proportion)
+                # self.dirichlet_dist.append([len(lb_data) for lb_data in lb_datas])
+                local_datas = [local_data+lb_data.tolist() for local_data,lb_data in zip(local_datas, lb_datas)]
+            # self.dirichlet_dist = np.array(self.dirichlet_dist).T
+            for i in range(self.num_clients):
+                np.random.shuffle(local_datas[i])
 
         elif self.dist_id == 5:
             """feature_skew_id"""
@@ -335,13 +387,14 @@ class DefaultTaskGen(BasicTaskGen):
         """Convert self.train_data and self.test_data to list that can be stored as .json file and the converted dataset={'x':[], 'y':[]}"""
         pass
 
-    def XYData_to_json(self, train_cidxs, valid_cidxs):
+    def XYData_to_json(self, train_cidxs, valid_cidxs=None):
         self.convert_data_for_saving()
         # save federated dataset
         feddata = {
             'store': 'XY',
             'client_names': self.cnames,
-            'dtest': self.test_data
+            'dtest': self.test_data,
+            'dvalid': self.val_data
 
         }
         for cid in range(self.num_clients):
@@ -349,9 +402,9 @@ class DefaultTaskGen(BasicTaskGen):
                 'dtrain':{
                     'x':[self.train_data['x'][did] for did in train_cidxs[cid]], 'y':[self.train_data['y'][did] for did in train_cidxs[cid]]
                 },
-                'dvalid':{
-                    'x':[self.train_data['x'][did] for did in valid_cidxs[cid]], 'y':[self.train_data['y'][did] for did in valid_cidxs[cid]]
-                }
+                # 'dvalid':{
+                #     'x':[self.train_data['x'][did] for did in valid_cidxs[cid]], 'y':[self.train_data['y'][did] for did in valid_cidxs[cid]]
+                # }
             }
         # with open(os.path.join(self.taskpath, 'data.json'), 'w') as outf:
         #     ujson.dump(feddata, outf)
@@ -476,7 +529,7 @@ class XYTaskReader(BasicTaskReader):
     def __init__(self, taskpath=''):
         super(XYTaskReader, self).__init__(taskpath)
 
-    def read_data(self):
+    def read_data(self, sample=False):
         if os.path.isfile(os.path.join(self.taskpath, 'data.json')):
             with open(os.path.join(self.taskpath, 'data.json'), 'r') as inf:
                 feddata = ujson.load(inf)
@@ -487,8 +540,12 @@ class XYTaskReader(BasicTaskReader):
             raise FileNotFoundError
                  
         test_data = XYDataset(feddata['dtest']['x'], feddata['dtest']['y'])
-        train_datas = [XYDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
-        valid_datas = [XYDataset(feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']) for name in feddata['client_names']]
+        valid_datas = XYDataset(feddata['dvalid']['x'], feddata['dvalid']['y'])
+        if not sample:
+            train_datas = [XYDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
+        else:
+            train_datas = [XYSampleDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
+        # valid_datas = [XYDataset(feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']) for name in feddata['client_names']]
         return train_datas, valid_datas, test_data, feddata['client_names']
 
 class IDXTaskReader(BasicTaskReader):
@@ -548,6 +605,76 @@ class XYDataset(Dataset):
 
     def get_all_labels(self):
         return self.all_labels
+
+class XYSampleDataset(XYDataset):
+    def __init__(self, X=[], Y=[], totensor = True, percent=1.0, mode='exact', k=100):
+        """ Init Dataset with pairs of features and labels/annotations.
+        XYDataset transforms data that is list\array into tensor.
+        The data is already loaded into memory before passing into XYDataset.__init__()
+        and thus is only suitable for benchmarks with small size (e.g. CIFAR10, MNIST)
+        Args:
+            X: a list of features
+            Y: a list of labels with the same length of X
+        """
+        super(XYSampleDataset, self).__init__(X, Y, totensor)
+        self.mode = mode
+        self.k = k
+        num_samples, num_classes = len(X) ,len(self.all_labels)
+        self.label_to_idx = {label: idx for idx, label in enumerate(sorted(self.all_labels))}
+        self.idx_to_label = {idx: label for label, idx in self.label_to_idx.items()}
+
+        self.cls_positive = collections.defaultdict(list)
+        
+        for i in range(num_samples):
+            self.cls_positive[Y[i]].append(i)
+        self.cls_negative = collections.defaultdict(list)
+        for label in self.all_labels:
+            for label_ in self.all_labels:
+                if label == label_:
+                    continue
+
+                self.cls_negative[label].extend(self.cls_positive[label_])
+        self.cls_positive = [np.asarray(self.cls_positive[self.idx_to_label[i]]) for i in range(num_classes)]
+        self.cls_negative = [np.asarray(self.cls_negative[self.idx_to_label[i]]) for i in range(num_classes)]
+        
+        if 0 < percent < 1:
+            n = int(len(self.cls_negative[0]) * percent)
+            self.cls_negative = [np.random.permutation(self.cls_negative[self.idx_to_label[i]])[0:n]
+                                 for i in range(num_classes)]
+
+        self.cls_positive = np.asarray(self.cls_positive)
+        self.cls_negative = np.asarray(self.cls_negative)
+
+    def __len__(self):
+        return len(self.Y)
+
+    def __getitem__(self, index):
+        img, target = self.X[index], self.Y[index]
+        if self.mode == 'exact':
+            pos_idx = index
+        elif self.mode == 'relax':
+            pos_idx = np.random.choice(self.cls_positive[self.label_to_idx[target.item()]], 1)
+            pos_idx = pos_idx[0]
+        else:
+            raise NotImplementedError(self.mode)
+
+        replace = True if self.k > len(self.cls_negative[self.label_to_idx[target.item()]]) else False
+        neg_idx = np.random.choice(self.cls_negative[self.label_to_idx[target.item()]], self.k, replace=replace)
+        sample_idx = np.hstack((np.asarray([pos_idx]), neg_idx))
+
+        return img, target, index, sample_idx
+
+    def tolist(self):
+        if not isinstance(self.X, torch.Tensor):
+            return self.X, self.Y
+        return self.X.tolist(), self.Y.tolist()
+
+    def _check_equal_length(self, X, Y):
+        return len(X)==len(Y)
+
+    def get_all_labels(self):
+        return self.all_labels
+
 
 class IDXDataset(Dataset):
     # The source dataset that can be indexed by IDXDataset
