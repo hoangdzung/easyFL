@@ -100,7 +100,7 @@ class Client(BasicClient):
         self.crdloss = CRDLoss(n_data = len(train_data), s_dim = feat_dim, t_dim = feat_dim, nce_t=option['nce_t']).cuda()
         self.kd_factor = option['mu']
         self.sample_weights = np.array(option['sample_weights'])/sum(option['sample_weights'])
-        self.model_type = np.random.choice(3, p=self.sample_weights)
+        self.model_type = np.random.choice(len(option['sample_weights']), p=self.sample_weights)
         self.step = 0
 
     def reply(self, svr_pkg):

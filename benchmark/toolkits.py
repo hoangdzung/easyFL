@@ -659,7 +659,11 @@ class XYSampleDataset(XYDataset):
             raise NotImplementedError(self.mode)
 
         replace = True if self.k > len(self.cls_negative[self.label_to_idx[target.item()]]) else False
-        neg_idx = np.random.choice(self.cls_negative[self.label_to_idx[target.item()]], self.k, replace=replace)
+        try:
+            neg_idx = np.random.choice(self.cls_negative[self.label_to_idx[target.item()]], self.k, replace=replace)
+        except:
+            return img, target
+            
         sample_idx = np.hstack((np.asarray([pos_idx]), neg_idx))
 
         return img, target, index, sample_idx
