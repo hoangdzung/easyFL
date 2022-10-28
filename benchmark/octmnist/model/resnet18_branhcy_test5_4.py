@@ -168,7 +168,7 @@ class Model(FModule):
 
     def pred_and_rep(self, x, n=3):
 
-            x = self.b0123_conv1(x)
+        x = self.b0123_conv1(x)
         if n==0:
             x = self.avg_pool(x)
             x = x.view(x.size(0), -1)
