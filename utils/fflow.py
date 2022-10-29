@@ -51,8 +51,8 @@ def read_option():
     # constructing the heterogeity of computing capability
     parser.add_argument('--capability', help="controlling the difference of local computing capability of each client", type=float, default=0)
     parser.add_argument('--small_machine_rate', help="proportion of smaller machines", type=float, default=0.5)
-    parser.add_argument('--sample_weights', type=float, nargs=3, default=[1.0, 1.0, 1.0], help='list of 3 floats used as machine type probabilities')
-    parser.add_argument('--agg_weights', type=int, nargs=3, default=[1, 5, 10], help='list of 3 ints used as weights of models')
+    parser.add_argument('--sample_weights', type=float, nargs="+", default=[1.0, 1.0, 1.0], help='list of 3 floats used as machine type probabilities')
+    parser.add_argument('--agg_weights', type=int, nargs="+", default=[1, 5, 10], help='list of 3 ints used as weights of models')
 
     # hyper-parameters of different algorithms
     parser.add_argument('--learning_rate_lambda', help='η for λ in afl', type=float, default=0)
