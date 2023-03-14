@@ -84,8 +84,8 @@ class Server(BasicServer):
 
         if split=='test' and self.test_data:
             data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
-        elif split =='val' and self.val_data:
-            data_loader = self.calculator.get_data_loader(self.val_data, batch_size=64)
+        elif split =='val' and self.valid_data:
+            data_loader = self.calculator.get_data_loader(self.valid_data, batch_size=64)
         else:
             return -1, -1
         
