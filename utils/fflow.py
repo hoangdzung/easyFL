@@ -29,6 +29,7 @@ def read_option():
     # hyper-parameters of training in server side
     parser.add_argument('--num_rounds', help='number of communication rounds', type=int, default=20)
     parser.add_argument('--proportion', help='proportion of clients sampled per round', type=float, default=0.2)
+    parser.add_argument('--num_clients', help='number of clients', type=int, default=0)
     # hyper-parameters of local training
     parser.add_argument('--num_epochs', help='number of epochs when clients trainset on data;', type=int, default=5)
     parser.add_argument('--learning_rate', help='learning rate for inner solver;', type=float, default=0.1)
@@ -127,7 +128,10 @@ def initialize(option):
     # get task dataset
     task_reader = getattr(importlib.import_module(bmk_core_path), 'TaskReader')(taskpath=os.path.join('fedtask', option['task']))
     train_datas, valid_data, test_data, client_names = task_reader.read_data(sample= option['algorithm'] == 'fedbranchy_crd')
-    num_clients = len(client_names)
+    if option['num_clients'] <= 0:
+        num_clients = min(option['num_clients'], len(client_names))
+    else:
+        num_clients = len(client_names)
     print("done")
 
     # init client
